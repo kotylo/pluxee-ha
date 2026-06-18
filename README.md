@@ -77,6 +77,34 @@ After setup, open your dashboard → *Edit → + Add Card → `Pluxee Card`*.
 The integration ships a custom Lovelace card that shows a card's **balance** and
 expands to its **latest transactions** when tapped.
 
+ ```yaml
+  type: conditional
+  conditions:
+    - condition: or
+      conditions:
+        - condition: time
+          after: "11:30"
+          before: "14:00:00"
+          weekdays:
+            - mon
+            - tue
+            - wed
+            - thu
+        - condition: location
+          locations:
+            - Work
+    - condition: state
+      entity: input_boolean.work_vacation # custom boolean to disable the card when on vacation
+      state: "off"
+  card:
+    type: horizontal-stack
+    cards:
+      - type: custom:pluxee-card
+        entity: sensor.meal_pass_1234_balance
+      - type: custom:pluxee-card
+        entity: sensor.food_pass_5678_balance
+  ```
+
 ### It installs itself — no manual resource needed
 
 The integration serves the card (`custom_components/pluxee/frontend/pluxee-card.js`)
@@ -116,35 +144,6 @@ stripped-down frontend), register it by hand:
 2. *Settings → Dashboards → ⋮ → Resources → + Add resource* →
    URL `/local/pluxee-card.js`, Type **JavaScript Module**.
 3. Hard-refresh (Ctrl+F5).
-
- ```yaml
-  type: conditional
-  conditions:
-    - condition: or
-      conditions:
-        - condition: time
-          after: "11:30"
-          before: "14:00:00"
-          weekdays:
-            - mon
-            - tue
-            - wed
-            - thu
-        - condition: location
-          locations:
-            - Work
-    - condition: state
-      entity: input_boolean.work_vacation # custom boolean to disable the card when on vacation
-      state: "off"
-  card:
-    type: horizontal-stack
-    cards:
-      - type: custom:pluxee-card
-        entity: sensor.meal_pass_1234_balance
-      - type: custom:pluxee-card
-        entity: sensor.food_pass_5678_balance
-
-  ```
 
 ## Other ways to add
 
