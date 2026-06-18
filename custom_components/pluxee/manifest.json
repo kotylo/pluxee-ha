@@ -1,9 +1,9 @@
 {
   "domain": "pluxee",
   "name": "Pluxee",
+  "after_dependencies": ["http", "frontend", "lovelace"],
   "codeowners": ["@kotylo"],
   "config_flow": true,
-  "after_dependencies": ["http", "frontend", "lovelace"],
   "documentation": "https://github.com/kotylo/pluxee-ha",
   "integration_type": "service",
   "iot_class": "cloud_polling",
