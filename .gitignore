@@ -1,0 +1,26 @@
+# Local reverse-engineering scratch — contains LIVE tokens & personal data.
+# NEVER publish this to a public repo.
+explore/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local test venv
+.ha-test-venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debugging
+app_bundle.js
+cf_manifest.js
+connect_*.js
+/login_page.html
+/pluxee_index.html
+cookies.txt
+
+# VS Code
+*.code-workspace
