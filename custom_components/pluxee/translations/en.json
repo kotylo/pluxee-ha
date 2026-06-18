@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Connect your Pluxee account",
-        "description": "1. Open this login link in your normal web browser:\n\n{auth_url}\n\n2. Log in with your Pluxee email, solve the captcha and enter the one-time code sent to your email.\n3. Your browser will land on a page that shows a loading spinner — that is expected. Copy the **full address-bar URL** (it starts with `https://consumers.pluxee.at/oidc/callback?code=...`).\n4. Paste that URL below within ~60 seconds.\n\n**Optional — stay logged in:** to avoid re-authenticating every few hours, also paste the session cookie. In the same browser, press **F12 → Network**, click any request to `connect.pluxee.app`, open **Headers → Request Headers**, and copy the entire **`Cookie:`** value (it contains `op_session`; alternatively, paste the `op_session*` rows from the Application → Cookies tab). Paste it in the second field.",
+        "description": "1. Open this login link in your normal web browser:\n\n{auth_url}\n\n2. Log in with your Pluxee email, solve the captcha and enter the one-time code sent to your email.\n3. Your browser will land on a page that shows a loading spinner — that is expected. Copy the **full address-bar URL** (it starts with `.../oidc/callback?code=...`).\n4. Paste that URL below within ~60 seconds.\n\n**Optional — stay logged in:** to avoid re-authenticating every few hours, also paste the session cookie. In the same browser, press **F12 → Network**, click any request to `connect.pluxee.app`, open **Headers → Request Headers**, and copy the entire **`Cookie:`** value (it contains `op_session`; alternatively, paste the `op_session*` rows from the Application → Cookies tab). Paste it in the second field.",
         "data": {
           "callback_url": "Pasted callback URL (or code)",
           "session_cookie": "Session cookie (optional, recommended)"
@@ -11,7 +11,7 @@
       },
       "reauth_confirm": {
         "title": "Re-authenticate Pluxee",
-        "description": "Your Pluxee session expired. Open this link in your browser, log in again (email + captcha + one-time code), then paste the resulting `https://consumers.pluxee.at/oidc/callback?code=...` URL below.\n\n{auth_url}\n\n**Optional — stay logged in:** to avoid this in future, also paste the session cookie. In the same browser, press **F12 → Network**, click any request to `connect.pluxee.app`, open **Headers → Request Headers**, and copy the entire **`Cookie:`** value (it contains `op_session`; alternatively, paste the `op_session*` rows from the Application → Cookies tab).",
+        "description": "Your Pluxee session expired. Open this link in your browser, log in again (email + captcha + one-time code), then paste the resulting `.../oidc/callback?code=...` URL below.\n\n{auth_url}\n\n**Optional — stay logged in:** to avoid this in future, also paste the session cookie. In the same browser, press **F12 → Network**, click any request to `connect.pluxee.app`, open **Headers → Request Headers**, and copy the entire **`Cookie:`** value (it contains `op_session`; alternatively, paste the `op_session*` rows from the Application → Cookies tab).",
         "data": {
           "callback_url": "Pasted callback URL (or code)",
           "session_cookie": "Session cookie (optional, recommended)"
@@ -19,7 +19,7 @@
       },
       "reconfigure": {
         "title": "Reconfigure Pluxee",
-        "description": "Open this link in your browser, log in (email + captcha + one-time code), then paste the resulting `https://consumers.pluxee.at/oidc/callback?code=...` URL below.\n\n{auth_url}\n\n**Optional — stay logged in:** also paste the session cookie. In the same browser, press **F12 → Network**, click any request to `connect.pluxee.app`, open **Headers → Request Headers**, and copy the entire **`Cookie:`** value (it contains `op_session`; alternatively, paste the `op_session*` rows from the Application → Cookies tab).",
+        "description": "Open this link in your browser, log in (email + captcha + one-time code), then paste the resulting `.../oidc/callback?code=...` URL below.\n\n{auth_url}\n\n**Optional — stay logged in:** also paste the session cookie. In the same browser, press **F12 → Network**, click any request to `connect.pluxee.app`, open **Headers → Request Headers**, and copy the entire **`Cookie:`** value (it contains `op_session`; alternatively, paste the `op_session*` rows from the Application → Cookies tab).",
         "data": {
           "callback_url": "Pasted callback URL (or code)",
           "session_cookie": "Session cookie (optional, recommended)"
