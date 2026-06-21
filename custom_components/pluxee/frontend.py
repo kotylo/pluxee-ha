@@ -16,7 +16,7 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 CARD_URL = "/pluxee/pluxee-card.js"
-CARD_VERSION = "0.2.2"
+CARD_VERSION = "0.2.3"
 _REGISTERED = "_frontend_registered"
 
 

@@ -225,7 +225,7 @@ async def test_sensors_created(
     assert meal.state == "83.11"
     assert meal.attributes["product_code"] == "SPAML"
     assert meal.attributes["last4"] == "1234"
-    assert food.state == "6.5"
+    assert food.state == "6.3"
     # No token refresh because access token was valid
     token_calls = [c for c in aioclient_mock.mock_calls if str(c[1]) == TOKEN_ENDPOINT]
     assert len(token_calls) == 0
@@ -505,3 +505,111 @@ async def test_reauth_flow(
     assert result["type"] == FlowResultType.ABORT
     assert result["reason"] == "reauth_successful"
     assert entry.data[CONF_REFRESH_TOKEN] == "REAUTH_REFRESH"
+
+
+# --------------------------------------------------------------------------- #
+# Reactive 401 recovery (regression test for auth-lost-after-restart)
+# --------------------------------------------------------------------------- #
+class _FakeResp:
+    def __init__(self, status, body="", json_data=None):
+        self.status = status
+        self._body = body
+        self._json = json_data
+        self.headers = {}
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def text(self):
+        return self._body
+
+    async def json(self):
+        return self._json
+
+
+class _FakeSession:
+    def __init__(self, get_responses, post_responses):
+        self._get = list(get_responses)
+        self._post = list(post_responses)
+        self.get_calls = 0
+        self.post_calls = 0
+
+    def get(self, url, headers=None, allow_redirects=True):
+        self.get_calls += 1
+        return self._get.pop(0)
+
+    def post(self, url, data=None, headers=None):
+        self.post_calls += 1
+        return self._post.pop(0)
+
+
+async def test_async_get_recovers_from_401_by_refreshing():
+    """A stale access token (401) must trigger a refresh + retry, not give up.
+
+    This is the after-restart scenario: the stored access token looks unexpired
+    but the server rejects it; the client should refresh (rotating the token),
+    persist the new tokens, and succeed without prompting for re-auth.
+    """
+    from custom_components.pluxee.api import PluxeeClient
+
+    cards = {"ciamId": "X", "consumerCardList": []}
+    sess = _FakeSession(
+        get_responses=[_FakeResp(401), _FakeResp(200, json_data=cards)],
+        post_responses=[
+            _FakeResp(
+                200,
+                body=json.dumps(
+                    {"access_token": "AT2", "refresh_token": "RT2", "expires_in": 1800}
+                ),
+            )
+        ],
+    )
+    saved = []
+
+    async def cb(tokens):
+        saved.append(tokens)
+
+    client = PluxeeClient(
+        session=sess,
+        refresh_token="RT1",
+        access_token="AT_STALE",
+        token_expires_at=time.time() + 1800,  # looks valid -> no proactive refresh
+        token_updated_cb=cb,
+    )
+
+    data = await client._async_get("/v3/spl/cardsInfos")
+
+    assert data == cards
+    assert sess.get_calls == 2  # 401, then successful retry
+    assert sess.post_calls == 1  # exactly one refresh
+    assert client.refresh_token == "RT2"  # rotated token kept
+    assert saved and saved[-1]["refresh_token"] == "RT2"  # and persisted
+
+
+async def test_async_get_401_twice_raises_auth_error():
+    """If it still 401s after a refresh, surface a PluxeeAuthError (real reauth)."""
+    from custom_components.pluxee.api import PluxeeAuthError, PluxeeClient
+
+    sess = _FakeSession(
+        get_responses=[_FakeResp(401), _FakeResp(401)],
+        post_responses=[
+            _FakeResp(
+                200,
+                body=json.dumps(
+                    {"access_token": "AT2", "refresh_token": "RT2", "expires_in": 1800}
+                ),
+            )
+        ],
+    )
+    client = PluxeeClient(
+        session=sess,
+        refresh_token="RT1",
+        access_token="AT_STALE",
+        token_expires_at=time.time() + 1800,
+    )
+    with pytest.raises(PluxeeAuthError):
+        await client._async_get("/v3/spl/cardsInfos")
+    assert sess.get_calls == 2

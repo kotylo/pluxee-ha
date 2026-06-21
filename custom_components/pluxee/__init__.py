@@ -35,5 +35,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: PluxeeConfigEntry) -> b
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: PluxeeConfigEntry) -> None:
-    """Reload entry when options change."""
-    await hass.config_entries.async_reload(entry.entry_id)
+    """Reload only when the user changed options.
+
+    The integration writes the config entry on every token refresh to persist the
+    rotated refresh token / session cookie. Those data-only writes must NOT
+    trigger a reload (it would recreate the client mid-refresh and risk
+    refresh-token reuse revocation). Only reload when options actually change.
+    """
+    coordinator = entry.runtime_data
+    if coordinator is None or coordinator.options != dict(entry.options):
+        await hass.config_entries.async_reload(entry.entry_id)

@@ -562,13 +562,29 @@ class PluxeeClient:
             "User-Agent": "HomeAssistant-Pluxee",
         }
 
-    async def _async_get(self, path: str) -> dict:
+    async def _async_get(self, path: str, _allow_recovery: bool = True) -> dict:
         access_token = await self._async_ensure_token()
         url = f"{API_BASE}{path}"
         try:
             async with self._session.get(url, headers=self._headers(access_token)) as resp:
                 if resp.status in (401, 403):
-                    raise PluxeeAuthError(f"API {path} returned {resp.status}")
+                    if _allow_recovery:
+                        # The stored access token is stale/revoked (common right
+                        # after an HA/Docker restart, where token rotation across
+                        # the restart can revoke the chain). Don't give up: force a
+                        # token refresh - which falls back to silent re-auth via
+                        # the stored session cookie - and retry the call once.
+                        _LOGGER.debug(
+                            "Pluxee API %s returned %s; forcing token refresh and "
+                            "retrying once before reporting an auth failure.",
+                            path,
+                            resp.status,
+                        )
+                        await self._async_refresh_locked(force=True)
+                        return await self._async_get(path, _allow_recovery=False)
+                    raise PluxeeAuthError(
+                        f"API {path} returned {resp.status} after a token refresh"
+                    )
                 if resp.status != 200:
                     text = await resp.text()
                     raise PluxeeApiError(f"API {path} returned {resp.status}: {text}")

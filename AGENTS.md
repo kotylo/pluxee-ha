@@ -99,6 +99,23 @@ the pycares daemon thread and unloads entries before phcc's cleanup check (else 
 timer/thread errors). `api.py` can be validated against the LIVE API on Windows via
 `python explore\test_client.py` (uses `explore/tokens.json`; refreshes + rotates it).
 
+## Auth resilience (restart recovery)
+Pluxee uses **refresh-token rotation with reuse-detection** and the refresh token is
+session-bound (no `offline_access`; requesting it = `invalid_scope`). A keep-alive
+(`TOKEN_KEEPALIVE_INTERVAL`=25 min) rotates the token to beat the inactivity timeout.
+Across an HA/Docker restart the chain can be revoked, so the stored access token 401s
+even though it looks unexpired. Two safeguards (added v0.2.2):
+- `api.py _async_get` does **reactive 401 recovery**: on 401/403 it forces a refresh
+  (which falls back to silent re-auth via the stored `op_session` cookie) and retries
+  once. So a restart self-heals instead of prompting reauth. Don't remove this.
+- `__init__.py _async_update_listener` reloads **only on options change** (compares
+  `coordinator.options`), NOT on the frequent token-data writes. Reloading on every
+  token save recreated the client mid-refresh and could trigger reuse-revocation.
+- Silent re-auth (`_async_silent_reauth`) uses a normal authorize (NOT prompt=none) with
+  the `op_session` cookie; node-oidc-provider auto-confirms consent and returns a code.
+  The optional session cookie is collected in the config/reauth flow and persisted; it
+  rolls occasionally and the rolled value is saved back.
+
 ## Gotchas / lessons
 - Don't create `PluxeeClient` with `token_expires_at=None` right after exchange — it forces
   an immediate refresh that rotates/consumes the just-issued refresh token. Pass a real

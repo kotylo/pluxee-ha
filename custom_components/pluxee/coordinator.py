@@ -34,6 +34,11 @@ class PluxeeCoordinator(DataUpdateCoordinator[PluxeeData]):
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.entry = entry
+        # Snapshot of options so the update listener can tell an options change
+        # (which needs a reload) from our own frequent token-data writes (which
+        # must NOT reload - reloading mid-refresh churns the client and can
+        # trigger refresh-token reuse revocation).
+        self.options = dict(entry.options)
         hours = entry.options.get(
             CONF_SCAN_INTERVAL_HOURS,
             entry.data.get(CONF_SCAN_INTERVAL_HOURS, DEFAULT_SCAN_INTERVAL_HOURS),

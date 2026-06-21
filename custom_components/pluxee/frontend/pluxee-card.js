@@ -239,4 +239,4 @@ if (!window.customCards.some((c) => c.type === "pluxee-card")) {
   });
 }
 
-console.info("%c PLUXEE-CARD %c v0.2.2 ", "background:#1a1a1a;color:#fff", "");
+console.info("%c PLUXEE-CARD %c v0.2.3 ", "background:#1a1a1a;color:#fff", "");
