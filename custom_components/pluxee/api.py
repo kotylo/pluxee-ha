@@ -12,7 +12,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from urllib.parse import urlencode, urljoin, urlparse, parse_qs
 
-from aiohttp import ClientError, ClientSession
+from aiohttp import ClientError, ClientSession, ClientTimeout
 
 from .const import (
     API_BASE,
@@ -85,6 +85,43 @@ def build_authorize_url(
 # --------------------------------------------------------------------------- #
 # Cookie helpers (for silent re-auth via the OP session cookie)
 # --------------------------------------------------------------------------- #
+# Silent re-auth needs TWO different cookie denylists, because "what to carry
+# while following the redirect chain" and "what to persist long-term" are not the
+# same set:
+#
+# 1. IN-FLIGHT - cookies sent while following the authorize -> /interaction ->
+#    callback redirect chain. Drop ONLY the Azure load-balancer affinity cookie
+#    (ASLBSA/ASLBSACORS): replaying a stale one pins the request to a recycled
+#    backend instance that times out (HTTP 408). Everything else MUST be carried,
+#    in particular the transient op_interaction/_interaction cookie the OP sets
+#    mid-chain: when it routes through a consent step it hands that cookie back at
+#    one hop and the NEXT hop requires it. Dropping it makes the next hop fail
+#    with HTTP 400 and masquerades as a dead session (the v0.2.3 regression).
+_DROP_IN_FLIGHT_PREFIXES = ("aslbsa",)
+
+# 2. DURABLE - what we persist as the long-term session cookie and what the user
+#    pastes. Keep only the SSO/device cookies (op_session/_session/op_device);
+#    the per-flow interaction/resume cookies and the LB affinity cookie are
+#    transient and must never be stored or replayed at the start of a fresh flow.
+_DROP_DURABLE_PREFIXES = (
+    "aslbsa",
+    "op_interaction",
+    "_interaction",
+    "op_resume",
+    "_resume",
+)
+
+
+def _keep_in_flight(name: str) -> bool:
+    """Whether a cookie should be carried across silent-reauth redirect hops."""
+    return not name.lower().startswith(_DROP_IN_FLIGHT_PREFIXES)
+
+
+def _is_durable_session_cookie(name: str) -> bool:
+    """Whether a cookie belongs in the persisted long-term session cookie."""
+    return not name.lower().startswith(_DROP_DURABLE_PREFIXES)
+
+
 def parse_cookie_header(header: str) -> dict[str, str]:
     """Parse pasted cookies into an ordered name->value dict.
 
@@ -93,8 +130,8 @@ def parse_cookie_header(header: str) -> dict[str, str]:
       * the DevTools "Application -> Cookies" table, one cookie per line with
         whitespace/tab-separated columns (``name<TAB>value<TAB>domain...``).
 
-    Only the relevant session cookies (``op_session`` family) are needed for
-    silent re-auth; transient ``op_interaction`` cookies are ignored.
+    Only the relevant session cookies (``op_session``/``op_device`` family) are
+    kept; load-balancer and transient cookies are filtered out.
     """
     text = (header or "").strip()
     if not text:
@@ -104,8 +141,7 @@ def parse_cookie_header(header: str) -> dict[str, str]:
 
     def _add(name: str, value: str) -> None:
         name, value = name.strip(), value.strip()
-        # Skip the transient interaction cookies and any obvious junk.
-        if name and value and not name.startswith("op_interaction"):
+        if name and value and _is_durable_session_cookie(name):
             jar[name] = value
 
     if "\n" not in text and ";" in text:
@@ -138,14 +174,20 @@ def serialize_cookies(jar: dict[str, str]) -> str:
 
 
 def update_jar_from_response(jar: dict[str, str], set_cookies: list[str]) -> None:
-    """Apply ``Set-Cookie`` response headers to a cookie jar (rolling sessions)."""
+    """Apply ``Set-Cookie`` headers to the in-flight redirect-chain cookie jar.
+
+    Keeps the rolling SSO cookie AND the transient ``op_interaction`` cookie the
+    OP sets mid-flow (the next redirect hop needs it); drops only the load-balancer
+    affinity cookie. The interaction cookie is stripped later, when the durable
+    session cookie is persisted (see ``_is_durable_session_cookie``).
+    """
     for raw in set_cookies:
         first = raw.split(";", 1)[0].strip()
         if "=" not in first:
             continue
         name, value = first.split("=", 1)
         name, value = name.strip(), value.strip()
-        if value and value not in ('""', "deleted"):
+        if value and value not in ('""', "deleted") and _keep_in_flight(name):
             jar[name] = value
 
 
@@ -456,12 +498,16 @@ class PluxeeClient:
                 "will be rejected. Re-paste the cookie via Reconfigure.",
                 sorted(jar) or "nothing",
             )
-        # Avoid the shared session's cookie jar overriding our explicit header.
-        try:
-            self._session.cookie_jar.clear_domain("connect.pluxee.app")
-        except (AttributeError, TypeError):  # pragma: no cover - jar may be mocked
-            pass
         for hop in range(10):
+            # Clear the shared session's jar for this domain before every hop so
+            # only our explicitly chosen (filtered) cookies are sent. Otherwise
+            # aiohttp auto-replays Set-Cookie from earlier hops - including the
+            # Azure load-balancer affinity cookie (ASLBSA) that pins us to a
+            # recycled backend and causes the intermittent HTTP 408 failures.
+            try:
+                self._session.cookie_jar.clear_domain("connect.pluxee.app")
+            except (AttributeError, TypeError):  # pragma: no cover - jar may be mocked
+                pass
             try:
                 async with self._session.get(
                     url,
@@ -470,22 +516,33 @@ class PluxeeClient:
                         "User-Agent": "HomeAssistant-Pluxee",
                     },
                     allow_redirects=False,
+                    timeout=ClientTimeout(total=20),
                 ) as resp:
                     update_jar_from_response(jar, resp.headers.getall("Set-Cookie", []))
                     status = resp.status
                     location = resp.headers.get("Location", "")
-            except ClientError as err:
+            except (ClientError, asyncio.TimeoutError) as err:
                 raise PluxeeApiError(
                     f"Network error during silent re-auth: {err}"
                 ) from err
 
             _LOGGER.debug("Silent re-auth hop %s -> HTTP %s", hop, status)
             if status not in (301, 302, 303, 307, 308):
-                # A 200 means the OP rendered an interaction page: the
-                # session cookie is missing or expired.
-                raise PluxeeAuthError(
-                    f"Silent re-auth needs interaction (HTTP {status}); "
-                    "the session cookie is invalid or expired"
+                if 200 <= status < 300:
+                    # The OP rendered an interaction (login/consent) page instead
+                    # of redirecting: the SSO session is genuinely expired and a
+                    # real (OTP) login is required. This 200 is the ONLY
+                    # definitive "session lost" signal.
+                    raise PluxeeAuthError(
+                        f"Silent re-auth needs interaction (HTTP {status}); "
+                        "the session cookie is invalid or expired"
+                    )
+                # Anything else (408/425/429, 5xx backend recycle, or a stray 400
+                # from a half-built interaction hop) is transient infra noise, not
+                # proof the session died. Raise a transient error so the keep-alive
+                # retries next cycle instead of forcing a re-auth prompt.
+                raise PluxeeApiError(
+                    f"Silent re-auth got transient HTTP {status}; will retry later"
                 )
             if not location:
                 raise PluxeeAuthError("Silent re-auth redirect missing Location header")
@@ -512,7 +569,11 @@ class PluxeeClient:
                         _LOGGER.debug(
                             "Pluxee op_session unchanged after silent re-auth."
                         )
-                    self._session_cookie = serialize_cookies(jar)
+                    # Persist only the durable SSO cookies - never the transient
+                    # op_interaction cookie we carried across hops to get here.
+                    self._session_cookie = serialize_cookies(
+                        {k: v for k, v in jar.items() if _is_durable_session_cookie(k)}
+                    )
                     return query["code"][0]
                 err = query.get("error", ["unknown"])[0]
                 raise PluxeeAuthError(

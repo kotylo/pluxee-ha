@@ -115,6 +115,37 @@ even though it looks unexpired. Two safeguards (added v0.2.2):
   the `op_session` cookie; node-oidc-provider auto-confirms consent and returns a code.
   The optional session cookie is collected in the config/reauth flow and persisted; it
   rolls occasionally and the rolled value is saved back.
+- **Overnight "session lost" (fixed v0.2.3):** the session-bound refresh token dies
+  periodically (`invalid_grant`) — normal; silent re-auth recovers it. But it was
+  intermittently failing with **HTTP 408** after a ~10s hang and that 408 was treated as
+  fatal. Root cause: we stored/replayed Azure **load-balancer affinity cookies**
+  (`ASLBSA`, `ASLBSACORS`) which pin to a backend instance recycled overnight → request
+  to the dead instance times out (408). Two fixes in `api.py`: (1) `_is_session_cookie`
+  denylists infra/transient cookies (`aslbsa*`, `*interaction`, `*resume`) so only the
+  SSO/device cookies (`op_session`/`_session`/`op_device`) are kept — applied in BOTH
+  `parse_cookie_header` and `update_jar_from_response`, plus `clear_domain` before every
+  redirect hop so aiohttp can't auto-replay affinity from Set-Cookie; (2) silent-reauth
+  treats `408/425/429/5xx` as **transient** (`PluxeeApiError` → keep-alive retries next
+  cycle) instead of `PluxeeAuthError` (which would force a reauth prompt). Only a real
+  200 interaction page = genuinely expired session. Added a 20s per-hop timeout.
+  Note: the OP session cookie is named `op_session` in prod but node-oidc-provider's
+  default is `_session` — keep the denylist naming-agnostic.
+- **Multi-hop silent re-auth regression (v0.2.3 follow-up):** the first-pass ASLBSA fix
+  over-corrected. It used ONE denylist for both "what to persist" and "what to carry
+  in-flight", so it dropped the transient `op_interaction`/`_interaction` cookie from
+  the redirect chain too. When the OP routes the authorize through an
+  `/op/interaction/.../consent` step (not always — only when consent isn't short-
+  circuited), it sets that cookie at one hop and the NEXT hop requires it; dropping it
+  made the next hop return **HTTP 400**, which was treated as "session lost" → forced
+  reauth. (Symptom in logs: silent re-auth `hop 0 -> 303`, `hop 1 -> 400`, while an
+  earlier single-hop attempt succeeded.) Fix in `api.py`: split into TWO denylists —
+  `_keep_in_flight` (drop ONLY `aslbsa`, so interaction cookies ride the chain like the
+  `verify_cookie.py` probe's `requests.Session` does) used by `update_jar_from_response`,
+  and `_is_durable_session_cookie` (drop `aslbsa`+`*interaction`+`*resume`) used by
+  `parse_cookie_header` and when persisting `_session_cookie`. Also: only a **2xx**
+  (rendered interaction page) is now a fatal "session expired" signal; any other non-
+  redirect status (incl. a stray 400) is transient → keep-alive retries next cycle
+  instead of prompting reauth. Don't re-merge the two denylists.
 
 ## Gotchas / lessons
 - Don't create `PluxeeClient` with `token_expires_at=None` right after exchange — it forces

@@ -510,12 +510,20 @@ async def test_reauth_flow(
 # --------------------------------------------------------------------------- #
 # Reactive 401 recovery (regression test for auth-lost-after-restart)
 # --------------------------------------------------------------------------- #
+class _FakeHeaders(dict):
+    def getall(self, key, default=None):
+        val = self.get(key)
+        if val is None:
+            return default if default is not None else []
+        return val if isinstance(val, list) else [val]
+
+
 class _FakeResp:
-    def __init__(self, status, body="", json_data=None):
+    def __init__(self, status, body="", json_data=None, headers=None):
         self.status = status
         self._body = body
         self._json = json_data
-        self.headers = {}
+        self.headers = _FakeHeaders(headers or {})
 
     async def __aenter__(self):
         return self
@@ -537,11 +545,11 @@ class _FakeSession:
         self.get_calls = 0
         self.post_calls = 0
 
-    def get(self, url, headers=None, allow_redirects=True):
+    def get(self, url, headers=None, allow_redirects=True, **kwargs):
         self.get_calls += 1
         return self._get.pop(0)
 
-    def post(self, url, data=None, headers=None):
+    def post(self, url, data=None, headers=None, **kwargs):
         self.post_calls += 1
         return self._post.pop(0)
 
@@ -613,3 +621,149 @@ async def test_async_get_401_twice_raises_auth_error():
     with pytest.raises(PluxeeAuthError):
         await client._async_get("/v3/spl/cardsInfos")
     assert sess.get_calls == 2
+
+
+# --------------------------------------------------------------------------- #
+# Cookie filtering + transient silent-reauth handling (the overnight-408 fix)
+# --------------------------------------------------------------------------- #
+def test_parse_cookie_header_drops_loadbalancer_cookies():
+    from custom_components.pluxee.api import parse_cookie_header
+
+    raw = (
+        "ASLBSA=abc; ASLBSACORS=def; op_device=d1; op_device.sig=s1; "
+        "op_session=sess; op_session.sig=ssig; op_interaction=junk"
+    )
+    jar = parse_cookie_header(raw)
+    assert "op_session" in jar and jar["op_session"] == "sess"
+    assert "op_device" in jar
+    # Infra / transient cookies must be dropped.
+    assert "ASLBSA" not in jar
+    assert "ASLBSACORS" not in jar
+    assert "op_interaction" not in jar
+
+
+def test_update_jar_from_response_drops_affinity_cookies():
+    from custom_components.pluxee.api import update_jar_from_response
+
+    jar = {"op_session": "old"}
+    update_jar_from_response(
+        jar,
+        [
+            "ASLBSA=newaffinity; Path=/; HttpOnly",
+            "op_session=rolled; Path=/op; Secure",
+            # The transient interaction cookie the OP sets mid-flow MUST be kept
+            # in-flight: the next redirect hop requires it.
+            "op_interaction=INT; Path=/op; HttpOnly",
+        ],
+    )
+    assert jar["op_session"] == "rolled"  # rolled SSO cookie tracked
+    assert "ASLBSA" not in jar  # affinity cookie ignored
+    assert jar["op_interaction"] == "INT"  # interaction cookie carried across hops
+
+
+async def test_silent_reauth_408_is_transient_not_auth_error():
+    """A 408 during silent re-auth must be transient (retry), not 'session lost'."""
+    from custom_components.pluxee.api import PluxeeApiError, PluxeeClient
+
+    sess = _FakeSession(get_responses=[_FakeResp(408)], post_responses=[])
+    client = PluxeeClient(
+        session=sess,
+        refresh_token="RT",
+        session_cookie="op_session=abc; op_session.sig=def",
+    )
+    with pytest.raises(PluxeeApiError):
+        await client._async_follow_silent_authorize(
+            "https://connect.pluxee.app/op/oidc/auth?x=1", "state123"
+        )
+
+
+async def test_silent_reauth_400_at_interaction_hop_is_transient():
+    """A stray 400 mid-redirect-chain must NOT force a user reauth prompt.
+
+    Only a 200 (rendered interaction page) means the session is genuinely dead;
+    everything else is transient infra noise that the keep-alive retries.
+    """
+    from custom_components.pluxee.api import (
+        PluxeeApiError,
+        PluxeeAuthError,
+        PluxeeClient,
+    )
+
+    sess = _FakeSession(
+        get_responses=[
+            _FakeResp(303, headers={"Location": "https://connect.pluxee.app/op/x"}),
+            _FakeResp(400),
+        ],
+        post_responses=[],
+    )
+    client = PluxeeClient(
+        session=sess,
+        refresh_token="RT",
+        session_cookie="op_session=abc; op_session.sig=def",
+    )
+    with pytest.raises(PluxeeApiError) as exc:
+        await client._async_follow_silent_authorize(
+            "https://connect.pluxee.app/op/oidc/auth?x=1", "state123"
+        )
+    assert not isinstance(exc.value, PluxeeAuthError)
+
+
+async def test_silent_reauth_carries_interaction_cookie_across_hops():
+    """Regression (v0.2.3): when the OP routes silent re-auth through an
+    /interaction consent step, it sets a transient op_interaction cookie at one
+    hop that the NEXT hop requires. That cookie must be carried forward (only the
+    load-balancer affinity cookie is dropped in-flight), and must NOT leak into
+    the persisted durable session cookie.
+    """
+    from custom_components.pluxee.api import PluxeeClient, parse_cookie_header
+
+    sent_cookies: list[str] = []
+
+    class _Sess:
+        def __init__(self):
+            self.hop = 0
+
+        def get(self, url, headers=None, allow_redirects=True, **kwargs):
+            sent_cookies.append((headers or {}).get("Cookie", ""))
+            hop, self.hop = self.hop, self.hop + 1
+            if hop == 0:
+                return _FakeResp(
+                    303,
+                    headers={
+                        "Location": "https://connect.pluxee.app/op/interaction/UID/consent",
+                        # affinity cookie must be ignored; interaction cookie kept
+                        "Set-Cookie": [
+                            "ASLBSA=affinity; Path=/; HttpOnly",
+                            "op_interaction=INT; Path=/op; HttpOnly",
+                        ],
+                    },
+                )
+            return _FakeResp(
+                303,
+                headers={
+                    "Location": (
+                        "https://consumers.pluxee.at/oidc/callback"
+                        "?code=CODE1&state=STATE"
+                    ),
+                    "Set-Cookie": "op_session=ROLLED; Path=/op; Secure",
+                },
+            )
+
+    client = PluxeeClient(
+        session=_Sess(),
+        refresh_token="RT",
+        session_cookie="op_session=OLD; op_session.sig=SIG",
+    )
+    code = await client._async_follow_silent_authorize(
+        "https://connect.pluxee.app/op/oidc/auth?x=1", "STATE"
+    )
+    assert code == "CODE1"
+    # hop 1 must have replayed the interaction cookie set at hop 0...
+    assert "op_interaction=INT" in sent_cookies[1]
+    # ...but never the load-balancer affinity cookie.
+    assert "ASLBSA" not in sent_cookies[1]
+    # The persisted cookie tracks the rolled op_session but drops the transient
+    # interaction cookie.
+    persisted = client.token_state()["session_cookie"]
+    assert parse_cookie_header(persisted).get("op_session") == "ROLLED"
+    assert "op_interaction" not in persisted
