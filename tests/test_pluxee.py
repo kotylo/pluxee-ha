@@ -477,6 +477,45 @@ async def test_silent_reauth_interaction_required_triggers_reauth(
     assert any(f["context"]["source"] == "reauth" for f in flows)
 
 
+async def test_api_403_with_live_session_retries_without_reauth(
+    hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
+):
+    """A persistent API 403 must NOT log the user out while the SSO session lives.
+
+    The resource API can reject a valid, freshly-minted token (backend recycle /
+    grant-propagation lag). As long as the session cookie still authorizes, the
+    integration should treat it as transient and retry - not start a reauth flow.
+    """
+    from custom_components.pluxee.api import AUTHORIZE_ENDPOINT
+    from custom_components.pluxee.const import CONF_SESSION_COOKIE
+
+    # Token endpoint is happy (refresh succeeds), but the data API keeps 403ing.
+    aioclient_mock.post(TOKEN_ENDPOINT, json=_token_response())
+    aioclient_mock.get(f"{API_BASE}/v2/product-referentials", json=REFERENTIALS)
+    aioclient_mock.get(f"{API_BASE}/v3/spl/cardsInfos", status=403, text="forbidden")
+    # The SSO session cookie still authorizes -> session is alive.
+    aioclient_mock.get(
+        AUTHORIZE_ENDPOINT, side_effect=await _silent_authorize_side_effect()
+    )
+
+    entry = MockConfigEntry(
+        domain=DOMAIN, unique_id="CIAM123", title="sodexo@gmail.com",
+        data={
+            CONF_REFRESH_TOKEN: "RT", CONF_ACCESS_TOKEN: "AT",
+            CONF_TOKEN_EXPIRES_AT: time.time() + 9999,  # valid -> no proactive refresh
+            CONF_SESSION_COOKIE: "op_session=GOOD; op_session.sig=SIG",
+            "ciam_id": "CIAM123", "email": "sodexo@gmail.com",
+        },
+    )
+    entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    # No reauth flow: the live session means we retry rather than prompt a login.
+    flows = hass.config_entries.flow.async_progress_by_handler(DOMAIN)
+    assert not any(f["context"]["source"] == "reauth" for f in flows)
+
+
 async def test_reauth_flow(
     hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
 ):

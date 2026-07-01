@@ -23,6 +23,7 @@ from .const import (
     DEFAULT_SCAN_INTERVAL_HOURS,
     DEFAULT_TX_LIMIT,
     DOMAIN,
+    MAX_CONSECUTIVE_AUTH_FAILURES,
     TOKEN_KEEPALIVE_INTERVAL,
 )
 
@@ -50,6 +51,9 @@ class PluxeeCoordinator(DataUpdateCoordinator[PluxeeData]):
             update_interval=timedelta(hours=hours),
         )
         self._tx_limit = entry.options.get(CONF_TX_LIMIT, DEFAULT_TX_LIMIT)
+        # Count consecutive auth failures so a transiently-wedged API doesn't get
+        # mistaken for a dead session (see _async_handle_auth_error).
+        self._consecutive_auth_failures = 0
         self.client = PluxeeClient(
             session=async_get_clientsession(hass),
             refresh_token=entry.data[CONF_REFRESH_TOKEN],
@@ -113,16 +117,59 @@ class PluxeeCoordinator(DataUpdateCoordinator[PluxeeData]):
 
     async def _async_update_data(self) -> PluxeeData:
         try:
-            return await self.client.async_get_data(tx_limit=self._tx_limit)
+            data = await self.client.async_get_data(tx_limit=self._tx_limit)
         except PluxeeAuthError as err:
-            _LOGGER.warning(
-                "Pluxee authentication failed, re-auth required: %s. Providing the "
-                "optional session cookie when re-authenticating lets the "
-                "integration recover silently in future without this prompt.",
-                err,
-            )
-            raise ConfigEntryAuthFailed(
-                f"Pluxee session expired, please re-authenticate: {err}"
-            ) from err
+            await self._async_handle_auth_error(err)  # always raises
+            raise  # unreachable, keeps the type checker happy
         except PluxeeApiError as err:
             raise UpdateFailed(f"Error fetching Pluxee data: {err}") from err
+        self._consecutive_auth_failures = 0
+        return data
+
+    async def _async_handle_auth_error(self, err: PluxeeAuthError) -> None:
+        """Decide between a transient retry and a real re-auth prompt.
+
+        The data API sometimes rejects a freshly-minted, valid token with 401/403
+        while the underlying SSO session is still perfectly alive - e.g. a backend
+        instance recycle, or a just-issued grant that has not yet propagated to
+        the resource API. Forcing the user to re-login in that case is wrong: the
+        session recovers on its own within a poll or two. So before prompting,
+        probe the stored session cookie; while it still authorizes, treat the
+        rejection as transient and retry on the next poll. Only give up (and
+        prompt for re-auth) when the session is genuinely gone, or after several
+        consecutive failures as a safety backstop. Always raises.
+        """
+        self._consecutive_auth_failures += 1
+        if (
+            self.client.has_session_cookie
+            and self._consecutive_auth_failures < MAX_CONSECUTIVE_AUTH_FAILURES
+        ):
+            try:
+                session_alive = await self.client.async_session_cookie_works()
+            except PluxeeApiError:
+                # Couldn't probe (transient infra noise) - assume alive and retry.
+                session_alive = True
+            if session_alive:
+                _LOGGER.warning(
+                    "Pluxee API rejected the token (%s), but the SSO session "
+                    "cookie still authorizes - treating this as a transient "
+                    "rejection (attempt %s/%s) and retrying on the next poll "
+                    "instead of asking you to re-login.",
+                    err,
+                    self._consecutive_auth_failures,
+                    MAX_CONSECUTIVE_AUTH_FAILURES,
+                )
+                raise UpdateFailed(
+                    f"Pluxee API auth rejected but the session is still valid; "
+                    f"will retry: {err}"
+                ) from err
+
+        _LOGGER.warning(
+            "Pluxee authentication failed, re-auth required: %s. Providing the "
+            "optional session cookie when re-authenticating lets the "
+            "integration recover silently in future without this prompt.",
+            err,
+        )
+        raise ConfigEntryAuthFailed(
+            f"Pluxee session expired, please re-authenticate: {err}"
+        ) from err

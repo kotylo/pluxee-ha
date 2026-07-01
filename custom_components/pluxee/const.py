@@ -48,6 +48,16 @@ MIN_SCAN_INTERVAL = timedelta(minutes=30)
 # 30min access-token lifetime so each tick rotates the refresh token.
 TOKEN_KEEPALIVE_INTERVAL = timedelta(minutes=25)
 
+# The data API can reject a freshly-minted, perfectly valid token with 401/403
+# even while the underlying SSO session is still alive (a backend recycle, or a
+# just-issued grant that has not yet propagated to the resource API). Rather than
+# logging the user out on the first such rejection, we probe the SSO session and,
+# while it still authorizes, retry on the next poll. This caps how many
+# consecutive auth failures we tolerate before assuming the session really is
+# gone and prompting for re-auth (a safety backstop against an endless retry
+# loop if the API stays wedged).
+MAX_CONSECUTIVE_AUTH_FAILURES = 3
+
 # Friendly product names by product code (fallback when referentials unavailable)
 PRODUCT_NAMES: dict[str, str] = {
     "SPAML": "Meal Pass",
