@@ -443,6 +443,17 @@ class PluxeeClient:
                 return
             await self._async_store_tokens(tokens)
 
+    async def async_authenticate_with_cookie(self) -> None:
+        """Mint an initial token set from the OP session cookie alone.
+
+        Lets setup/reauth proceed with just the pasted ``op_session`` cookie when
+        the one-time callback code cannot be captured - Pluxee's callback page now
+        auto-redirects and consumes the code before the user can copy it, so the
+        cookie is the reliable way in. Raises ``PluxeeAuthError`` if the cookie is
+        missing/expired (the OP then requires a real interactive login).
+        """
+        await self._async_silent_reauth()
+
     async def _async_silent_reauth(self) -> None:
         """Mint fresh tokens without user interaction using the OP session cookie.
 

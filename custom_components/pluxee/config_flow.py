@@ -48,7 +48,11 @@ CONF_CALLBACK_URL = "callback_url"
 
 _STEP_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_CALLBACK_URL): str,
+        # Both fields are optional: authentication works with EITHER a pasted
+        # callback URL/code OR just the session cookie. The cookie-only path is
+        # now the primary one because Pluxee's callback page auto-redirects and
+        # consumes the one-time code before it can be copied.
+        vol.Optional(CONF_CALLBACK_URL, default=""): str,
         # Multiline so a pasted DevTools cookie table (multiple lines) survives
         # intact instead of being collapsed to a single line.
         vol.Optional(CONF_SESSION_COOKIE, default=""): TextSelector(
@@ -97,38 +101,56 @@ class PluxeeConfigFlow(ConfigFlow, domain=DOMAIN):
         Returns (token_state, info). token_state already reflects any rotation
         and carries the (optional) session cookie for later silent re-auth.
         """
-        code = extract_code(callback_url)
-        if not code:
-            raise PluxeeError("no_code")
         session = async_get_clientsession(self.hass)
-
-        # Validate the optional session cookie FIRST (before consuming the
-        # single-use code) so a wrong-format/expired cookie gives immediate,
-        # specific feedback instead of silently failing hours later.
         cookie = (session_cookie or "").strip() or None
-        if cookie:
-            probe = PluxeeClient(session=session, refresh_token="", session_cookie=cookie)
-            try:
-                works = await probe.async_session_cookie_works()
-            except PluxeeError:
-                works = True  # network hiccup - don't block setup on validation
-            if not works:
-                raise PluxeeError("session_cookie_invalid")
+        code = extract_code(callback_url)
 
-        tokens = await async_exchange_code(session, code, self._verifier or "")
-        # Build a client with a valid expiry so it does NOT refresh (which would
-        # rotate/consume the just-issued refresh token) during validation.
-        client = PluxeeClient(
-            session=session,
-            refresh_token=tokens["refresh_token"],
-            access_token=tokens["access_token"],
-            token_expires_at=time.time() + int(tokens.get("expires_in", 1800)),
-            session_cookie=cookie,
-        )
+        if not code:
+            # No pasted code: bootstrap purely from the session cookie. Pluxee's
+            # callback page now auto-redirects and burns the one-time code before
+            # it can be copied, so the cookie is the reliable way in.
+            if not cookie:
+                raise PluxeeError("no_code")
+            client = PluxeeClient(
+                session=session, refresh_token="", session_cookie=cookie
+            )
+            try:
+                await client.async_authenticate_with_cookie()
+            except PluxeeAuthError as err:
+                raise PluxeeError("session_cookie_invalid") from err
+            id_token = None
+        else:
+            # A code was pasted: validate the optional session cookie FIRST
+            # (before consuming the single-use code) so a wrong-format/expired
+            # cookie gives immediate, specific feedback instead of silently
+            # failing hours later, then exchange the code.
+            if cookie:
+                probe = PluxeeClient(
+                    session=session, refresh_token="", session_cookie=cookie
+                )
+                try:
+                    works = await probe.async_session_cookie_works()
+                except PluxeeError:
+                    works = True  # network hiccup - don't block setup on validation
+                if not works:
+                    raise PluxeeError("session_cookie_invalid")
+            tokens = await async_exchange_code(session, code, self._verifier or "")
+            # Build a client with a valid expiry so it does NOT refresh (which
+            # would rotate/consume the just-issued refresh token) during
+            # validation.
+            client = PluxeeClient(
+                session=session,
+                refresh_token=tokens["refresh_token"],
+                access_token=tokens["access_token"],
+                token_expires_at=time.time() + int(tokens.get("expires_in", 1800)),
+                session_cookie=cookie,
+            )
+            id_token = tokens.get("id_token")
+
         data = await client.async_get_data(tx_limit=0)
         info = {
             "ciam_id": data.ciam_id,
-            "email": _decode_jwt_email(tokens.get("id_token")),
+            "email": _decode_jwt_email(id_token),
             "num_cards": len(data.cards),
         }
         return client.token_state(), info
@@ -152,7 +174,7 @@ class PluxeeConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 tokens, info = await self._async_validate(
-                    user_input[CONF_CALLBACK_URL],
+                    user_input.get(CONF_CALLBACK_URL, ""),
                     user_input.get(CONF_SESSION_COOKIE, ""),
                 )
             except PluxeeAuthError:
@@ -196,7 +218,7 @@ class PluxeeConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 tokens, info = await self._async_validate(
-                    user_input[CONF_CALLBACK_URL],
+                    user_input.get(CONF_CALLBACK_URL, ""),
                     user_input.get(CONF_SESSION_COOKIE, ""),
                 )
             except PluxeeAuthError:
@@ -231,7 +253,7 @@ class PluxeeConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 tokens, info = await self._async_validate(
-                    user_input[CONF_CALLBACK_URL],
+                    user_input.get(CONF_CALLBACK_URL, ""),
                     user_input.get(CONF_SESSION_COOKIE, ""),
                 )
             except PluxeeAuthError:

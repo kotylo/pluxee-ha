@@ -193,6 +193,55 @@ async def test_config_flow_bad_code(
     assert result["errors"] == {"base": "no_code"}
 
 
+async def test_config_flow_cookie_only_no_callback(
+    hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
+):
+    """Setup succeeds with ONLY the session cookie - no pasted callback code.
+
+    Pluxee's callback page now auto-redirects and burns the one-time code, so the
+    cookie-only path (bootstrap tokens via silent re-auth) is the reliable way in.
+    """
+    from custom_components.pluxee.api import AUTHORIZE_ENDPOINT
+    from custom_components.pluxee.const import CONF_SESSION_COOKIE
+
+    # A normal authorize with the cookie returns a fresh code...
+    aioclient_mock.get(
+        AUTHORIZE_ENDPOINT, side_effect=await _silent_authorize_side_effect()
+    )
+    # ...which is exchanged at the token endpoint for a full token set.
+    aioclient_mock.post(TOKEN_ENDPOINT, json=_token_response(refresh="COOKIE_REFRESH"))
+    aioclient_mock.get(f"{API_BASE}/v2/product-referentials", json=REFERENTIALS)
+    aioclient_mock.get(f"{API_BASE}/v3/spl/cardsInfos", json=CARDS_INFOS)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    # Submit ONLY the cookie; leave the callback URL empty.
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {"session_cookie": "op_session=GOOD; op_session.sig=SIG"},
+    )
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    data = result["data"]
+    assert data[CONF_REFRESH_TOKEN] == "COOKIE_REFRESH"
+    assert data["ciam_id"] == "CIAM123"
+    # The session cookie must be persisted for future silent re-auth.
+    assert CONF_SESSION_COOKIE in data and "op_session=GOOD" in data[CONF_SESSION_COOKIE]
+
+
+async def test_config_flow_requires_code_or_cookie(
+    hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
+):
+    """Submitting neither a callback code nor a cookie is a clear no_code error."""
+    _mock_api(aioclient_mock)
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+    assert result["type"] == FlowResultType.FORM
+    assert result["errors"] == {"base": "no_code"}
+
+
 async def _setup_entry(hass, aioclient_mock, expires_at):
     entry = MockConfigEntry(
         domain=DOMAIN,
