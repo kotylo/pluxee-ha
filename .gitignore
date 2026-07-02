@@ -1,6 +1,7 @@
 # Local reverse-engineering scratch — contains LIVE tokens & personal data.
 # NEVER publish this to a public repo.
 explore/
+creds.txt
 
 # Python
 __pycache__/

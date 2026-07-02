@@ -16,9 +16,10 @@ from aiohttp import ClientError, ClientSession, ClientTimeout
 
 from .const import (
     API_BASE,
+    API_COUNTRY,
+    AUTHORIZATION_VERSION,
     AUTHORIZE_ENDPOINT,
     CLIENT_ID,
-    COUNTRY_CODE,
     OCP_APIM_SUBSCRIPTION_KEY,
     PRODUCT_NAMES,
     REDIRECT_URI,
@@ -275,6 +276,30 @@ def _oauth_error_code(body: str) -> str | None:
 
 
 # --------------------------------------------------------------------------- #
+# Amount / field helpers
+# --------------------------------------------------------------------------- #
+def _amount_to_float(amount: dict | None) -> float:
+    """Convert an API money object ``{value, exponent}`` to a float.
+
+    e.g. ``{"value": 8311, "exponent": 2}`` -> ``83.11``. Values are already
+    signed by the API (negative for debits).
+    """
+    if not isinstance(amount, dict):
+        return 0.0
+    value = amount.get("value", 0) or 0
+    exponent = amount.get("exponent", 2) or 0
+    return round(value / (10 ** exponent), 2)
+
+
+def _last4(masked_pan: str | None) -> str | None:
+    """Extract the last four digits from a masked PAN like ``"XXXX 1234"``."""
+    if not masked_pan:
+        return None
+    digits = "".join(ch for ch in masked_pan if ch.isdigit())
+    return digits[-4:] if digits else None
+
+
+# --------------------------------------------------------------------------- #
 # Data model
 # --------------------------------------------------------------------------- #
 @dataclass
@@ -360,7 +385,6 @@ class PluxeeClient:
         self._session_cookie = session_cookie or None
         self._token_updated_cb = token_updated_cb
         self._product_names: dict[str, str] = dict(PRODUCT_NAMES)
-        self._referentials_loaded = False
         self._refresh_lock = asyncio.Lock()
         self._last_refresh_at = 0.0
 
@@ -628,9 +652,11 @@ class PluxeeClient:
     def _headers(self, access_token: str) -> dict[str, str]:
         return {
             "Authorization": f"Bearer {access_token}",
+            "authorization-version": AUTHORIZATION_VERSION,
             "Ocp-Apim-Subscription-Key": OCP_APIM_SUBSCRIPTION_KEY,
-            "Country-Code": COUNTRY_CODE,
             "Accept": "application/json",
+            "Origin": "https://consumers.pluxee.at",
+            "Referer": "https://consumers.pluxee.at/",
             "User-Agent": "HomeAssistant-Pluxee",
         }
 
@@ -664,26 +690,10 @@ class PluxeeClient:
         except ClientError as err:
             raise PluxeeApiError(f"Network error calling {path}: {err}") from err
 
-    async def _async_load_referentials(self) -> None:
-        if self._referentials_loaded:
-            return
-        try:
-            data = await self._async_get("/v2/product-referentials")
-            for item in data.get("data", []):
-                attrs = item.get("attributes", {})
-                code = attrs.get("type") or attrs.get("countryProductTypeId")
-                name = attrs.get("name")
-                if code and name:
-                    self._product_names[code] = name
-            self._referentials_loaded = True
-        except PluxeeError as err:
-            _LOGGER.debug("Could not load product referentials: %s", err)
-
     async def async_get_data(self, tx_limit: int = 15) -> PluxeeData:
         """Fetch all cards, balances and (optionally) recent transactions."""
-        await self._async_load_referentials()
-        raw = await self._async_get("/v3/spl/cardsInfos")
-        data = self._parse_cards_infos(raw)
+        raw = await self._async_get(f"/v2/{API_COUNTRY}/cards")
+        data = self._parse_cards(raw)
         if tx_limit > 0:
             for card in data.cards:
                 try:
@@ -703,55 +713,79 @@ class PluxeeClient:
         self, card_id: str, limit: int = 15
     ) -> list[Transaction]:
         """Fetch the most recent transactions for a card."""
-        raw = await self._async_get(f"/v2/spl/cards/{card_id}/transactions")
+        raw = await self._async_get(
+            f"/v2/{API_COUNTRY}/cards/{card_id}/transactions?limit={limit}"
+        )
         result: list[Transaction] = []
-        for item in raw.get("data", []):
-            a = item.get("attributes", {})
+        for item in raw.get("transactions", []):
+            amount = item.get("amount") or {}
             result.append(
                 Transaction(
-                    date=a.get("transactionDateTime") or a.get("settlementDate"),
-                    amount=a.get("transactionAmount", a.get("billingAmount", 0)),
-                    currency=a.get("transactionCurrency", "EUR"),
-                    merchant=a.get("merchantName"),
-                    description=a.get("description"),
-                    transaction_code=a.get("transactionCode"),
-                    mobile=a.get("mobilePayment") == "Y",
+                    date=item.get("date"),
+                    # amount is already signed (negative for debits/payments).
+                    amount=_amount_to_float(amount),
+                    currency=amount.get("currency", "EUR"),
+                    merchant=item.get("merchantName"),
+                    description=item.get("description") or item.get("code"),
+                    transaction_code=item.get("code") or item.get("type"),
+                    # The new API has no explicit mobile-payment flag.
+                    mobile=False,
                 )
             )
         return result[:limit]
 
-    def _parse_cards_infos(self, raw: dict) -> PluxeeData:
+    def _parse_cards(self, raw: dict) -> PluxeeData:
+        """Parse the /v2/{country}/cards response into the card model.
+
+        Response shape (eva/bff backend):
+          {"walletId": "...", "cards": [ {
+              "cardId", "maskedPan", "state", "name", "expiry",
+              "benefits": [ {"benefitId", "productType", "name",
+                             "amount": {"value", "exponent", "currency"}} ] } ]}
+        """
         cards: list[Card] = []
-        for consumer in raw.get("consumerCardList", []):
-            for info in consumer.get("cardInfoList", []):
-                wallets: list[Wallet] = []
-                for account in info.get("accountBalanceList", []):
-                    for w in account.get("walletBalanceList", []):
-                        exponent = w.get("exponent", 2)
-                        amount = w.get("amount", 0)
-                        balance = amount / (10 ** exponent)
-                        wallets.append(
-                            Wallet(
-                                wallet_id=w.get("uniqueWalletId", ""),
-                                wallet_type=w.get("walletType"),
-                                balance=round(balance, 2),
-                                currency=w.get("currency", "EUR"),
-                                status=w.get("walletStatus"),
-                            )
-                        )
-                code = info.get("productCode", "")
-                cards.append(
-                    Card(
-                        unique_card_id=info.get("uniqueCardId", ""),
-                        product_code=code,
-                        product_name=self._product_names.get(code, code or "Pluxee Card"),
-                        masked_pan=info.get("maskedPan"),
-                        last4=info.get("panLastFourDigits"),
-                        name_on_card=info.get("nameOnCard"),
-                        status=info.get("cardStatus"),
-                        expiry_date=info.get("expiryDate"),
-                        preferred=bool(info.get("preferredCard")),
-                        wallets=wallets,
+        for c in raw.get("cards", []):
+            benefits = c.get("benefits") or []
+            wallets: list[Wallet] = []
+            for b in benefits:
+                amount = b.get("amount") or {}
+                wallets.append(
+                    Wallet(
+                        wallet_id=b.get("benefitId", ""),
+                        wallet_type=b.get("productType") or b.get("programType"),
+                        balance=_amount_to_float(amount),
+                        currency=amount.get("currency", "EUR"),
+                        status=None,
                     )
                 )
-        return PluxeeData(ciam_id=raw.get("ciamId"), cards=cards)
+            code = ""
+            if benefits:
+                code = (
+                    benefits[0].get("productType")
+                    or benefits[0].get("externalProductType")
+                    or ""
+                )
+            # Prefer our friendly English product names by code (SPAML -> Meal
+            # Pass); fall back to the (localized) name the API returns.
+            product_name = (
+                self._product_names.get(code)
+                or c.get("name")
+                or (benefits[0].get("name") if benefits else None)
+                or code
+                or "Pluxee Card"
+            )
+            cards.append(
+                Card(
+                    unique_card_id=c.get("cardId", ""),
+                    product_code=code,
+                    product_name=product_name,
+                    masked_pan=c.get("maskedPan"),
+                    last4=_last4(c.get("maskedPan")),
+                    name_on_card=c.get("name"),
+                    status=c.get("state"),
+                    expiry_date=c.get("expiry"),
+                    preferred=False,
+                    wallets=wallets,
+                )
+            )
+        return PluxeeData(ciam_id=raw.get("walletId"), cards=cards)

@@ -41,81 +41,95 @@ def _token_response(refresh="REFRESH1") -> dict:
     }
 
 
-CARDS_INFOS = {
-    "ciamId": "CIAM123",
-    "consumerCardList": [
+# NOTE: fictitious values only (see AGENTS.md - never commit real account data).
+CARD1_ID = "TESTCARD0000000000000001"
+CARD2_ID = "TESTCARD0000000000000002"
+
+# eva/bff GET /v2/at/cards response shape (post-2026 migration).
+CARDS = {
+    "walletId": "WALLET123",
+    "cards": [
         {
-            "uniqueConsumerId": "C1",
-            "cardInfoList": [
+            "cardId": CARD1_ID,
+            "uniqueConsumerId": "TESTCONSUMER00000000001",
+            "maskedPan": "XXXX 1234",
+            "isPhysical": True,
+            "scheme": "VISA",
+            "state": "ACTIVE",
+            "name": "Restaurant",
+            "icon": "plx-ic-meal",
+            "color": "GREEN",
+            "expiry": "2028-07-01T00:00:00.000Z",
+            "benefits": [
                 {
-                    "uniqueCardId": "CARD1",
-                    "productCode": "SPAML",
-                    "maskedPan": "123456XXXXXX1234",
-                    "panLastFourDigits": "1234",
-                    "nameOnCard": "SOME/SODEXO",
-                    "cardStatus": "A",
-                    "expiryDate": "012026",
-                    "preferredCard": True,
-                    "accountBalanceList": [
-                        {"walletBalanceList": [
-                            {"uniqueWalletId": "W1", "currency": "EUR",
-                             "amount": 8311, "exponent": 2,
-                             "walletType": "ML", "walletStatus": "N"}]}
-                    ],
-                },
-                {
-                    "uniqueCardId": "CARD2",
-                    "productCode": "SPAFX",
-                    "maskedPan": "12345604XXXX5678",
-                    "panLastFourDigits": "5678",
-                    "nameOnCard": "SOME/SODEXO",
-                    "cardStatus": "A",
-                    "expiryDate": "012026",
-                    "preferredCard": True,
-                    "accountBalanceList": [
-                        {"walletBalanceList": [
-                            {"uniqueWalletId": "W2", "currency": "EUR",
-                             "amount": 630, "exponent": 2,
-                             "walletType": "ML", "walletStatus": "N"}]}
-                    ],
-                },
+                    "benefitId": "TESTBENEFIT0000000000001",
+                    "productType": "SPAML",
+                    "externalProductType": "SPAML",
+                    "name": "Restaurant",
+                    "programType": "CARD",
+                    "amount": {"value": 8311, "exponent": 2, "currency": "EUR"},
+                }
             ],
-        }
+        },
+        {
+            "cardId": CARD2_ID,
+            "uniqueConsumerId": "TESTCONSUMER00000000002",
+            "maskedPan": "XXXX 5678",
+            "state": "ACTIVE",
+            "name": "Lebensmittel",
+            "expiry": "2028-07-01T00:00:00.000Z",
+            "benefits": [
+                {
+                    "benefitId": "TESTBENEFIT0000000000002",
+                    "productType": "SPAFX",
+                    "externalProductType": "SPAFX",
+                    "name": "Lebensmittel",
+                    "programType": "CARD",
+                    "amount": {"value": 630, "exponent": 2, "currency": "EUR"},
+                }
+            ],
+        },
     ],
 }
 
-REFERENTIALS = {
-    "data": [
-        {"type": "product-referentials", "id": "28",
-         "attributes": {"type": "SPAML", "name": "Meal Pass"}},
-        {"type": "product-referentials", "id": "29",
-         "attributes": {"type": "SPAFX", "name": "Food Pass"}},
-    ]
-}
 
-
+# eva/bff GET /v2/at/cards/{cardId}/transactions response shape.
 TRANSACTIONS = {
-    "data": [
-        {"type": "transactions", "id": "T1", "attributes": {
-            "transactionAmount": -24, "transactionCurrency": "EUR",
-            "merchantName": "Cameo Lounge", "description": "Purchase",
-            "transactionCode": "Purchase", "mobilePayment": "Y",
-            "transactionDateTime": "2026-06-11T13:15:47.000Z"}},
-        {"type": "transactions", "id": "T2", "attributes": {
-            "transactionAmount": -8.4, "transactionCurrency": "EUR",
-            "merchantName": "BILLA", "description": "Purchase",
-            "transactionCode": "Purchase", "mobilePayment": "Y",
-            "transactionDateTime": "2026-06-09T12:29:05.000Z"}},
-    ]
+    "card": {"cardId": CARD1_ID, "maskedPan": "XXXX 1234"},
+    "transactions": [
+        {
+            "id": "T1",
+            "description": "Purchase",
+            "merchantName": "Test Lounge",
+            "date": "2026-06-11T13:15:47.000",
+            "status": "APPROVED",
+            "type": "DEBIT",
+            "code": "PAYMENT",
+            "amount": {"value": -2400, "exponent": 2, "currency": "EUR"},
+        },
+        {
+            "id": "T2",
+            "description": "Purchase",
+            "merchantName": "Test Market",
+            "date": "2026-06-09T12:29:05.000",
+            "status": "APPROVED",
+            "type": "DEBIT",
+            "code": "PAYMENT",
+            "amount": {"value": -840, "exponent": 2, "currency": "EUR"},
+        },
+    ],
 }
 
 
 def _mock_api(aioclient_mock: AiohttpClientMocker, token=None):
     aioclient_mock.post(TOKEN_ENDPOINT, json=token or _token_response())
-    aioclient_mock.get(f"{API_BASE}/v2/product-referentials", json=REFERENTIALS)
-    aioclient_mock.get(f"{API_BASE}/v3/spl/cardsInfos", json=CARDS_INFOS)
-    aioclient_mock.get(f"{API_BASE}/v2/spl/cards/CARD1/transactions", json=TRANSACTIONS)
-    aioclient_mock.get(f"{API_BASE}/v2/spl/cards/CARD2/transactions", json=TRANSACTIONS)
+    aioclient_mock.get(f"{API_BASE}/v2/at/cards", json=CARDS)
+    aioclient_mock.get(
+        f"{API_BASE}/v2/at/cards/{CARD1_ID}/transactions", json=TRANSACTIONS
+    )
+    aioclient_mock.get(
+        f"{API_BASE}/v2/at/cards/{CARD2_ID}/transactions", json=TRANSACTIONS
+    )
 
 
 def test_authorize_url_does_not_request_offline_access():
@@ -149,7 +163,7 @@ async def test_config_flow_creates_entry(
     assert result["title"] == "sodexo@gmail.com"
     data = result["data"]
     assert data[CONF_REFRESH_TOKEN] == "REFRESH1"
-    assert data["ciam_id"] == "CIAM123"
+    assert data["ciam_id"] == "WALLET123"
     # token endpoint should have been called exactly once (no premature refresh)
     token_calls = [c for c in aioclient_mock.mock_calls if str(c[1]) == TOKEN_ENDPOINT]
     assert len(token_calls) == 1
@@ -210,8 +224,7 @@ async def test_config_flow_cookie_only_no_callback(
     )
     # ...which is exchanged at the token endpoint for a full token set.
     aioclient_mock.post(TOKEN_ENDPOINT, json=_token_response(refresh="COOKIE_REFRESH"))
-    aioclient_mock.get(f"{API_BASE}/v2/product-referentials", json=REFERENTIALS)
-    aioclient_mock.get(f"{API_BASE}/v3/spl/cardsInfos", json=CARDS_INFOS)
+    aioclient_mock.get(f"{API_BASE}/v2/at/cards", json=CARDS)
 
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
@@ -224,7 +237,7 @@ async def test_config_flow_cookie_only_no_callback(
     assert result["type"] == FlowResultType.CREATE_ENTRY
     data = result["data"]
     assert data[CONF_REFRESH_TOKEN] == "COOKIE_REFRESH"
-    assert data["ciam_id"] == "CIAM123"
+    assert data["ciam_id"] == "WALLET123"
     # The session cookie must be persisted for future silent re-auth.
     assert CONF_SESSION_COOKIE in data and "op_session=GOOD" in data[CONF_SESSION_COOKIE]
 
@@ -281,10 +294,10 @@ async def test_sensors_created(
 
     # Last-transaction sensor with history in attributes
     tx = hass.states.get("sensor.meal_pass_1234_last_transaction")
-    assert tx is not None and tx.state == "-24"
-    assert tx.attributes["last_merchant"] == "Cameo Lounge"
+    assert tx is not None and float(tx.state) == -24.0
+    assert tx.attributes["last_merchant"] == "Test Lounge"
     assert len(tx.attributes["transactions"]) == 2
-    assert tx.attributes["transactions"][1]["merchant"] == "BILLA"
+    assert tx.attributes["transactions"][1]["merchant"] == "Test Market"
 
 
 async def test_token_refresh_and_rotation_persisted(
@@ -447,10 +460,13 @@ async def test_silent_reauth_recovers_without_user(
     aioclient_mock.get(
         AUTHORIZE_ENDPOINT, side_effect=await _silent_authorize_side_effect()
     )
-    aioclient_mock.get(f"{API_BASE}/v2/product-referentials", json=REFERENTIALS)
-    aioclient_mock.get(f"{API_BASE}/v3/spl/cardsInfos", json=CARDS_INFOS)
-    aioclient_mock.get(f"{API_BASE}/v2/spl/cards/CARD1/transactions", json=TRANSACTIONS)
-    aioclient_mock.get(f"{API_BASE}/v2/spl/cards/CARD2/transactions", json=TRANSACTIONS)
+    aioclient_mock.get(f"{API_BASE}/v2/at/cards", json=CARDS)
+    aioclient_mock.get(
+        f"{API_BASE}/v2/at/cards/{CARD1_ID}/transactions", json=TRANSACTIONS
+    )
+    aioclient_mock.get(
+        f"{API_BASE}/v2/at/cards/{CARD2_ID}/transactions", json=TRANSACTIONS
+    )
 
     entry = MockConfigEntry(
         domain=DOMAIN, unique_id="CIAM123", title="sodexo@gmail.com",
@@ -540,8 +556,7 @@ async def test_api_403_with_live_session_retries_without_reauth(
 
     # Token endpoint is happy (refresh succeeds), but the data API keeps 403ing.
     aioclient_mock.post(TOKEN_ENDPOINT, json=_token_response())
-    aioclient_mock.get(f"{API_BASE}/v2/product-referentials", json=REFERENTIALS)
-    aioclient_mock.get(f"{API_BASE}/v3/spl/cardsInfos", status=403, text="forbidden")
+    aioclient_mock.get(f"{API_BASE}/v2/at/cards", status=403, text="forbidden")
     # The SSO session cookie still authorizes -> session is alive.
     aioclient_mock.get(
         AUTHORIZE_ENDPOINT, side_effect=await _silent_authorize_side_effect()

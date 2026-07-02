@@ -230,8 +230,11 @@ class PluxeeConfigFlow(ConfigFlow, domain=DOMAIN):
                     else "cannot_connect"
                 )
             else:
-                await self.async_set_unique_id(info["ciam_id"])
-                self._abort_if_unique_id_mismatch(reason="wrong_account")
+                # The account identifier scheme changed with the 2026 API
+                # migration (old ciamId -> new walletId), so an existing entry's
+                # stored unique_id may differ. Don't enforce a match here (it
+                # would wrongly abort with "wrong_account"); just refresh the
+                # entry's credentials in place.
                 return self.async_update_reload_and_abort(
                     self._reauth_entry,
                     data={**self._reauth_entry.data, **self._entry_data(tokens, info)},
@@ -265,8 +268,9 @@ class PluxeeConfigFlow(ConfigFlow, domain=DOMAIN):
                     else "cannot_connect"
                 )
             else:
-                await self.async_set_unique_id(info["ciam_id"])
-                self._abort_if_unique_id_mismatch(reason="wrong_account")
+                # See reauth: the identifier scheme changed with the API
+                # migration, so don't enforce a unique_id match on an existing
+                # entry - just apply the refreshed credentials.
                 return self.async_update_reload_and_abort(
                     entry,
                     data={**entry.data, **self._entry_data(tokens, info)},

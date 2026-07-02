@@ -11,6 +11,23 @@ transactions as sensors. Unofficial; built by reverse-engineering the
 Test account: `somesodexo@gmail.com`, country `AT`, 2 cards (Meal Pass SPAML,
 Food Pass SPAFX).
 
+## ⚠️ Privacy — sanitize before finishing (NEVER commit real account data)
+When investigating the live API you WILL handle real values (card numbers, PANs,
+card/consumer/wallet IDs, balances, merchant names, transaction dates). **Before
+you finish / hand off / commit, replace every real value that landed in tracked
+files** (tests, fixtures, code comments/docstrings, README, this file) **with
+fictitious placeholders.** Conventions used here:
+- Card/consumer/benefit IDs → `TESTCARD…`, `TESTCONSUMER…`, `TESTBENEFIT…`; wallet
+  id → `WALLET123`.
+- PANs → `XXXX 1234` / `XXXX 5678` (last4 `1234` / `5678`).
+- Balances → `83.11` (amount value `8311`) and `6.30` (value `630`).
+- Merchants/places → `Test Lounge`, `Test Market` (Test-prefixed, never real names).
+Delete scratch files that captured live JSON/tokens (put them in the OS temp /
+scratchpad, never the repo). Before done, grep the repo for any real value you
+saw and confirm zero hits, e.g.
+`grep -rIE '<real-last4>|<real-merchant>' custom_components tests README.md`.
+`creds.txt` and `explore/tokens.json` are gitignored — keep it that way.
+
 ## Repo layout
 - `custom_components/pluxee/` — the integration (the deliverable).
   - `const.py` — all endpoints, client id, subscription key, config keys, defaults.
@@ -63,22 +80,31 @@ returned by each refresh (coordinator does this via `token_updated_cb` →
 `async_update_entry`), or the chain breaks → reauth. access_token = opaque, 1800s.
 Refresh needs only `grant_type=refresh_token` + `refresh_token` + `client_id`.
 
-## Data / balance API
-Base `https://api.pluxee.app/gl/cwc/consumer-front-api`. Required headers:
-`Authorization: Bearer <access>`, `Ocp-Apim-Subscription-Key: 76ecbd16117d4163b45136e61f05fb7a`,
-`Country-Code: AT`.
-- `GET /v3/spl/cardsInfos` — everything: `consumerCardList[].cardInfoList[]` each with
-  uniqueCardId, productCode, maskedPan, panLastFourDigits, cardStatus, expiryDate,
-  preferredCard, and `accountBalanceList[].walletBalanceList[]` where
-  **balance = amount / 10**exponent** (e.g. 8311 exp 2 = €83.11). `ciamId` = account id
-  (config entry unique_id).
-- `GET /v3/spl/cards` — lighter card list. `GET /v2/product-referentials` — productCode→name
-  (SPAML=Meal Pass, SPAFX/SPAFD=Food Pass, SPAGF=Gift Pass).
-- `GET /v2/spl/cards/{cardId}/transactions` — recent tx; `data[].attributes`:
-  transactionAmount (signed float), transactionCurrency, merchantName, transactionDateTime,
-  settlementDate, description, transactionCode, mobilePayment ("Y"/"N"), splitData[].
-  Optional `month=YYYY-MM` param. (Static config in the SPA Next.js `__NEXT_DATA__`
-  runtimeConfig: apiProxy, ocpApimSubscriptionKey, sodexoConnectClientId, pluxeeConnectURI.)
+## Data / balance API (migrated ~2026-06-29 to the "eva/bff" backend)
+Base `https://api.pluxee.app/gl/eva/bff`. Required headers:
+`Authorization: Bearer <access>`, `authorization-version: 2`,
+`Ocp-Apim-Subscription-Key: f2b9fb99716f43a38b01867a0aeaf687`, plus
+`Origin` / `Referer: https://consumers.pluxee.at`. Country is a **lowercase path
+segment** (`at`), not a header.
+**DECOMMISSIONED (now 401/403):** the old base `…/gl/cwc/consumer-front-api`, key
+`76ecbd16…`, `Country-Code: AT` header, and the `/v3/spl/cardsInfos` /
+`/v2/spl/cards/…/transactions` / `/v2/product-referentials` endpoints. Only the
+DATA API moved — the OIDC/auth layer (connect.pluxee.app/op) is unchanged.
+- `GET /v2/at/cards` → `{walletId, cards:[{cardId, uniqueConsumerId, maskedPan
+  ("XXXX 1234"), isPhysical, scheme, state ("ACTIVE"), name, icon, color, expiry
+  ("2028-07-01T…Z"), benefits:[{benefitId, productType (SPAML/SPAFX — same codes),
+  externalProductType, name, programType, amount:{value,exponent,currency}}]}]}`.
+  **balance = value / 10^exponent** (e.g. 8311 exp 2 = €83.11). `walletId` = account
+  id → config entry unique_id (replaced the old `ciamId`). No `product-referentials`
+  endpoint anymore; friendly names come from `PRODUCT_NAMES` (SPAML=Meal Pass,
+  SPAFX=Food Pass), falling back to the API's localized `name`.
+- `GET /v2/at/cards/{cardId}/transactions?limit=N` → `{card, transactions:[{id,
+  description, merchantName, date ("2026-06-11T13:15:47.000"), status ("APPROVED"),
+  type ("DEBIT"/"CREDIT"), code ("PAYMENT"/"LOAD"), amount:{value,exponent,currency}
+  (**signed** — negative for debits), merchantId/Address/City, splitData[]}]}`.
+- Reverse-eng tip: the SPA is Vite + RTK Query. Fetch the live bundle
+  (`https://consumers.pluxee.at/assets/index-*.js`) and grep for `backendEndpointUrl`,
+  `backendAPIMKey`, `evaBffApi`, `getWallet1`, and endpoint `url:` template strings.
 
 ## Entities
 Per card → a device with: `<product>_<last4>_balance` (monetary EUR, wallet breakdown attrs)

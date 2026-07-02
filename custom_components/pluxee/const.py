@@ -18,10 +18,17 @@ REDIRECT_URI = "https://consumers.pluxee.at/oidc/callback"
 # (see PluxeeCoordinator) rather than rely on a long-lived offline token.
 SCOPE = "openid profile email phone"
 
-# Consumer front API
-API_BASE = "https://api.pluxee.app/gl/cwc/consumer-front-api"
-OCP_APIM_SUBSCRIPTION_KEY = "76ecbd16117d4163b45136e61f05fb7a"
+# Consumer API (the "eva/bff" backend the consumers.pluxee.at SPA uses). Pluxee
+# migrated off the old /gl/cwc/consumer-front-api ("cardsInfos") endpoints around
+# 2026-06-29; the old base + subscription key now return 401/403. The new backend
+# takes the country as a lowercase path segment and requires an extra
+# "authorization-version: 2" header alongside the (new) subscription key.
+API_BASE = "https://api.pluxee.app/gl/eva/bff"
+OCP_APIM_SUBSCRIPTION_KEY = "f2b9fb99716f43a38b01867a0aeaf687"
+AUTHORIZATION_VERSION = "2"
 COUNTRY_CODE = "AT"
+# Lowercase country used in the API path (e.g. /v2/at/cards).
+API_COUNTRY = "at"
 
 # Config entry data keys
 CONF_REFRESH_TOKEN = "refresh_token"
