@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Pluxee-Konto verbinden",
-        "description": "**Empfohlen — nur mit dem Session-Cookie verbinden** (keine Callback-URL nötig):\n\n1. Melde dich in deinem normalen Webbrowser bei https://pluxee.at an (E-Mail + Captcha + Einmalcode). Falls du bereits angemeldet bist, weiter mit Schritt 2.\n2. Drücke **F12 → Application → Cookies → `https://connect.pluxee.app`** und kopiere die `op_session*`-Zeilen (`op_session`, `op_session.sig`, `op_session.legacy`, `op_session.legacy.sig`).\n3. Füge sie unten in das Feld **Session-Cookie** ein und bestätige. Lass die Callback-URL leer.\n\n*Alternative (Callback-URL):* Öffne den Login-Link {auth_url}, melde dich an und kopiere die komplette Adressleisten-URL, die mit `.../oidc/callback?code=...` beginnt. Hinweis: Die Pluxee-Seite leitet jetzt sofort weiter und verbraucht den Code, daher ist die Cookie-Methode zuverlässiger.",
+        "description": "**Empfohlen — nur mit dem Session-Cookie verbinden** (keine Callback-URL nötig):\n\n1. Melde dich in deinem normalen Webbrowser bei consumers.pluxee.at an (E-Mail + Captcha + Einmalcode). Falls du bereits angemeldet bist, weiter mit Schritt 2.\n2. Drücke **F12 → Application → Cookies → `connect.pluxee.app`** und kopiere die `op_session*`-Zeilen (`op_session`, `op_session.sig`, `op_session.legacy`, `op_session.legacy.sig`).\n3. Füge sie unten in das Feld **Session-Cookie** ein und bestätige. Lass die Callback-URL leer.\n\n*Alternative (Callback-URL):* Öffne den Login-Link {auth_url}, melde dich an und kopiere die komplette Adressleisten-URL, die mit `.../oidc/callback?code=...` beginnt. Hinweis: Die Pluxee-Seite leitet jetzt sofort weiter und verbraucht den Code, daher ist die Cookie-Methode zuverlässiger.",
         "data": {
           "callback_url": "Callback-URL (optional — leer lassen, wenn das Cookie eingefügt wurde)",
           "session_cookie": "Session-Cookie (empfohlen)"
@@ -11,7 +11,7 @@
       },
       "reauth_confirm": {
         "title": "Pluxee erneut anmelden",
-        "description": "Deine Pluxee-Sitzung ist abgelaufen. **Empfohlen:** Melde dich erneut bei https://pluxee.at im Browser an, drücke dann **F12 → Application → Cookies → `https://connect.pluxee.app`**, kopiere die `op_session*`-Zeilen und füge sie unten in das Feld **Session-Cookie** ein (Callback-URL leer lassen).\n\n*Alternative:* Öffne diesen Link {auth_url}, melde dich an und füge die resultierende `.../oidc/callback?code=...` URL ein.",
+        "description": "Deine Pluxee-Sitzung ist abgelaufen. **Empfohlen:** Melde dich erneut bei consumers.pluxee.at im Browser an, drücke dann **F12 → Application → Cookies → `connect.pluxee.app`**, kopiere die `op_session*`-Zeilen und füge sie unten in das Feld **Session-Cookie** ein (Callback-URL leer lassen).\n\n*Alternative:* Öffne diesen Link {auth_url}, melde dich an und füge die resultierende `.../oidc/callback?code=...` URL ein.",
         "data": {
           "callback_url": "Callback-URL (optional — leer lassen, wenn das Cookie eingefügt wurde)",
           "session_cookie": "Session-Cookie (empfohlen)"
@@ -19,7 +19,7 @@
       },
       "reconfigure": {
         "title": "Pluxee neu konfigurieren",
-        "description": "**Empfohlen:** Melde dich bei https://pluxee.at im Browser an, drücke dann **F12 → Application → Cookies → `https://connect.pluxee.app`**, kopiere die `op_session*`-Zeilen und füge sie unten in das Feld **Session-Cookie** ein (Callback-URL leer lassen).\n\n*Alternative:* Öffne diesen Link {auth_url}, melde dich an und füge die resultierende `.../oidc/callback?code=...` URL ein.",
+        "description": "**Empfohlen:** Melde dich bei consumers.pluxee.at im Browser an, drücke dann **F12 → Application → Cookies → `connect.pluxee.app`**, kopiere die `op_session*`-Zeilen und füge sie unten in das Feld **Session-Cookie** ein (Callback-URL leer lassen).\n\n*Alternative:* Öffne diesen Link {auth_url}, melde dich an und füge die resultierende `.../oidc/callback?code=...` URL ein.",
         "data": {
           "callback_url": "Callback-URL (optional — leer lassen, wenn das Cookie eingefügt wurde)",
           "session_cookie": "Session-Cookie (empfohlen)"

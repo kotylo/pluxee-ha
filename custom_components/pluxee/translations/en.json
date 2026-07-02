@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Connect your Pluxee account",
-        "description": "**Recommended — connect with just your session cookie** (no callback URL needed):\n\n1. In your normal web browser, log in at https://pluxee.at (email + captcha + one-time code). If you are already logged in, skip to step 2.\n2. Press **F12 → Application → Cookies → `https://connect.pluxee.app`** and copy the `op_session*` rows (`op_session`, `op_session.sig`, `op_session.legacy`, `op_session.legacy.sig`).\n3. Paste them into the **Session cookie** field below and submit. Leave the callback URL empty.\n\n*Alternative (callback URL):* open the login link {auth_url}, log in, and copy the full address-bar URL that starts with `.../oidc/callback?code=...`. Note: Pluxee's page now redirects instantly and burns the code, so the cookie method above is more reliable.",
+        "description": "**Recommended — connect with just your session cookie** (no callback URL needed):\n\n1. In your normal web browser, log in at consumers.pluxee.at (email + captcha + one-time code). If you are already logged in, skip to step 2.\n2. Press **F12 → Application → Cookies → `connect.pluxee.app`** and copy the `op_session*` rows (`op_session`, `op_session.sig`, `op_session.legacy`, `op_session.legacy.sig`).\n3. Paste them into the **Session cookie** field below and submit. Leave the callback URL empty.\n\n*Alternative (callback URL):* open the login link {auth_url}, log in, and copy the full address-bar URL that starts with `.../oidc/callback?code=...`. Note: Pluxee's page now redirects instantly and burns the code, so the cookie method above is more reliable.",
         "data": {
           "callback_url": "Callback URL (optional — leave empty if you pasted the cookie)",
           "session_cookie": "Session cookie (recommended)"
@@ -11,7 +11,7 @@
       },
       "reauth_confirm": {
         "title": "Re-authenticate Pluxee",
-        "description": "Your Pluxee session expired. **Recommended:** log in again at https://pluxee.at in your browser, then press **F12 → Application → Cookies → `https://connect.pluxee.app`**, copy the `op_session*` rows and paste them into the **Session cookie** field below (leave the callback URL empty).\n\n*Alternative:* open this link {auth_url}, log in, and paste the resulting `.../oidc/callback?code=...` URL.",
+        "description": "Your Pluxee session expired. **Recommended:** log in again at consumers.pluxee.at in your browser, then press **F12 → Application → Cookies → `connect.pluxee.app`**, copy the `op_session*` rows and paste them into the **Session cookie** field below (leave the callback URL empty).\n\n*Alternative:* open this link {auth_url}, log in, and paste the resulting `.../oidc/callback?code=...` URL.",
         "data": {
           "callback_url": "Callback URL (optional — leave empty if you pasted the cookie)",
           "session_cookie": "Session cookie (recommended)"
@@ -19,7 +19,7 @@
       },
       "reconfigure": {
         "title": "Reconfigure Pluxee",
-        "description": "**Recommended:** log in at https://pluxee.at in your browser, then press **F12 → Application → Cookies → `https://connect.pluxee.app`**, copy the `op_session*` rows and paste them into the **Session cookie** field below (leave the callback URL empty).\n\n*Alternative:* open this link {auth_url}, log in, and paste the resulting `.../oidc/callback?code=...` URL.",
+        "description": "**Recommended:** log in at consumers.pluxee.at in your browser, then press **F12 → Application → Cookies → `connect.pluxee.app`**, copy the `op_session*` rows and paste them into the **Session cookie** field below (leave the callback URL empty).\n\n*Alternative:* open this link {auth_url}, log in, and paste the resulting `.../oidc/callback?code=...` URL.",
         "data": {
           "callback_url": "Callback URL (optional — leave empty if you pasted the cookie)",
           "session_cookie": "Session cookie (recommended)"
