@@ -108,10 +108,11 @@ expands to its **latest transactions** when tapped.
 ### It installs itself — no manual resource needed
 
 The integration serves the card (`custom_components/pluxee/frontend/pluxee-card.js`)
-and registers it as a frontend module automatically. So once the integration is
-installed and a config entry is set up, just **restart Home Assistant and
-hard-refresh your browser (Ctrl+F5)** — then *Edit dashboard → + Add Card →
-"Pluxee Card"* appears in the list.
+and registers it as both a Lovelace resource and a frontend module automatically.
+Its URL changes whenever the bundled JavaScript changes, avoiding stale frontend
+caches. Once the integration is installed and a config entry is set up, the card
+appears under *Edit dashboard → + Add Card → "Pluxee Card"* without a manual
+resource or cache reset.
 
 Config (the picker adds `type: custom:pluxee-card`; set the entity in YAML):
 
