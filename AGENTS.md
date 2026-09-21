@@ -70,10 +70,11 @@ public client (`token_endpoint_auth_method=none`).
 hCaptcha enforced server-side. Automated browsers (Playwright) are refused; a
 tokenless form POST just re-renders. => HA cannot send the OTP itself. The
 config flow therefore is **manual**: generate authorize URL (our PKCE) → user logs
-in in a real browser (email+captcha+OTP) → SPA callback page hangs on a spinner
-(state mismatch ⇒ the code is NOT consumed) → user copies the
-`…/oidc/callback?code=…` URL → HA exchanges it. **Auth code TTL ≈ 60s**, exchange
-immediately.
+in in a real browser (email+captcha+OTP) → user keeps DevTools open, filters the
+Network requests for `connect.pluxee.app`, opens a matching request, and copies
+the `op_session*` request cookies from its Cookies tab → HA exchanges them for
+tokens. The callback URL remains an alternative when it can be copied. **Auth
+code TTL ≈ 60s**, exchange immediately.
 
 **Refresh tokens ROTATE on every use.** Always persist the new `refresh_token`
 returned by each refresh (coordinator does this via `token_updated_cb` →

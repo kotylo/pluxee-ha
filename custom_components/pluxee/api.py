@@ -128,8 +128,8 @@ def parse_cookie_header(header: str) -> dict[str, str]:
 
     Accepts either form the user is likely to paste:
       * a raw ``Cookie:`` request header - ``a=b; c=d`` (single line); or
-      * the DevTools "Application -> Cookies" table, one cookie per line with
-        whitespace/tab-separated columns (``name<TAB>value<TAB>domain...``).
+            * the DevTools Network request's "Cookies" table, one cookie per line
+                with whitespace/tab-separated columns (``name<TAB>value<TAB>domain...``).
 
     Only the relevant session cookies (``op_session``/``op_device`` family) are
     kept; load-balancer and transient cookies are filtered out.

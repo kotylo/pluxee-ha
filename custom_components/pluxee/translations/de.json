@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Pluxee-Konto verbinden",
-        "description": "**Empfohlen — nur mit dem Session-Cookie verbinden** (keine Callback-URL nötig):\n\n1. Melde dich in deinem normalen Webbrowser bei consumers.pluxee.at an (E-Mail + Captcha + Einmalcode). Falls du bereits angemeldet bist, weiter mit Schritt 2.\n2. Drücke **F12 → Application → Cookies → `connect.pluxee.app`** und kopiere die `op_session*`-Zeilen (`op_session`, `op_session.sig`, `op_session.legacy`, `op_session.legacy.sig`).\n3. Füge sie unten in das Feld **Session-Cookie** ein und bestätige. Lass die Callback-URL leer.\n\n*Alternative (Callback-URL):* Öffne den Login-Link {auth_url}, melde dich an und kopiere die komplette Adressleisten-URL, die mit `.../oidc/callback?code=...` beginnt. Hinweis: Die Pluxee-Seite leitet jetzt sofort weiter und verbraucht den Code, daher ist die Cookie-Methode zuverlässiger.",
+        "description": "**Empfohlen — nur mit dem Session-Cookie verbinden** (keine Callback-URL nötig):\n\n1. Öffne den Pluxee-Login-Link im normalen Browser und lasse die Entwicklertools geöffnet ( **F12** ), während du dich anmeldest. Führe E-Mail-, Captcha- und Einmalcode-Schritte aus. Wenn du bereits angemeldet bist, fahre mit Schritt 2 fort.\n2. Öffne in den Entwicklertools den Tab **Network** und filtere die Liste der Anfragen nach `connect.pluxee.app`. Öffne eine Anfrage an diese Domain, wechsle zum Tab **Cookies** und kopiere die `op_session*`-Request-Cookies (`op_session`, `op_session.sig`, `op_session.legacy`, `op_session.legacy.sig`). Kopiere keine Cookies von `api.pluxee.app`.\n3. Füge die kopierten Zeilen unten in das Feld **Session-Cookie** ein und bestätige. Lass die Callback-URL leer.\n\n*Alternative (Callback-URL):* Öffne den Login-Link {auth_url}, melde dich an und kopiere die komplette Adressleisten-URL, die mit `.../oidc/callback?code=...` beginnt.",
         "data": {
           "callback_url": "Callback-URL (optional — leer lassen, wenn das Cookie eingefügt wurde)",
           "session_cookie": "Session-Cookie (empfohlen)"
@@ -11,7 +11,7 @@
       },
       "reauth_confirm": {
         "title": "Pluxee erneut anmelden",
-        "description": "Deine Pluxee-Sitzung ist abgelaufen. **Empfohlen:** Melde dich erneut bei consumers.pluxee.at im Browser an, drücke dann **F12 → Application → Cookies → `connect.pluxee.app`**, kopiere die `op_session*`-Zeilen und füge sie unten in das Feld **Session-Cookie** ein (Callback-URL leer lassen).\n\n*Alternative:* Öffne diesen Link {auth_url}, melde dich an und füge die resultierende `.../oidc/callback?code=...` URL ein.",
+        "description": "Deine Pluxee-Sitzung ist abgelaufen. **Empfohlen:** Öffne den Pluxee-Login-Link im Browser und lasse die Entwicklertools geöffnet ( **F12** ), während du dich erneut anmeldest. Öffne in den Entwicklertools den Tab **Network** und filtere die Liste der Anfragen nach `connect.pluxee.app`. Öffne eine Anfrage an diese Domain, wechsle zum Tab **Cookies**, kopiere die `op_session*`-Request-Cookies und füge sie unten in das Feld **Session-Cookie** ein. Lass die Callback-URL leer.\n\n*Alternative:* Öffne diesen Link {auth_url}, melde dich an und füge die resultierende `.../oidc/callback?code=...` URL ein.",
         "data": {
           "callback_url": "Callback-URL (optional — leer lassen, wenn das Cookie eingefügt wurde)",
           "session_cookie": "Session-Cookie (empfohlen)"
@@ -19,7 +19,7 @@
       },
       "reconfigure": {
         "title": "Pluxee neu konfigurieren",
-        "description": "**Empfohlen:** Melde dich bei consumers.pluxee.at im Browser an, drücke dann **F12 → Application → Cookies → `connect.pluxee.app`**, kopiere die `op_session*`-Zeilen und füge sie unten in das Feld **Session-Cookie** ein (Callback-URL leer lassen).\n\n*Alternative:* Öffne diesen Link {auth_url}, melde dich an und füge die resultierende `.../oidc/callback?code=...` URL ein.",
+        "description": "**Empfohlen:** Öffne den Pluxee-Login-Link im Browser und lasse die Entwicklertools geöffnet ( **F12** ), während du dich anmeldest. Öffne in den Entwicklertools den Tab **Network** und filtere die Liste der Anfragen nach `connect.pluxee.app`. Öffne eine Anfrage an diese Domain, wechsle zum Tab **Cookies**, kopiere die `op_session*`-Request-Cookies und füge sie unten in das Feld **Session-Cookie** ein. Lass die Callback-URL leer.\n\n*Alternative:* Öffne diesen Link {auth_url}, melde dich an und füge die resultierende `.../oidc/callback?code=...` URL ein.",
         "data": {
           "callback_url": "Callback-URL (optional — leer lassen, wenn das Cookie eingefügt wurde)",
           "session_cookie": "Session-Cookie (empfohlen)"
@@ -30,7 +30,7 @@
       "no_code": "Nichts zum Anmelden vorhanden. Füge dein Session-Cookie ein (die `op_session*`-Zeilen für `connect.pluxee.app`) — oder, bei der Callback-Methode, die komplette URL, die `code=` enthält.",
       "invalid_auth": "Anmeldung fehlgeschlagen oder Code abgelaufen. Öffne den Link erneut, melde dich an und füge die neue URL schnell ein.",
       "cannot_connect": "Pluxee konnte nicht erreicht werden. Bitte versuche es erneut.",
-      "session_cookie_invalid": "Das Session-Cookie ist ungültig (kein `op_session`, falsches Format oder abgelaufen). Kopiere den vollständigen `Cookie:`-Request-Header für `connect.pluxee.app` (muss `op_session=...` enthalten) oder lass das Feld leer, um ohne fortzufahren."
+      "session_cookie_invalid": "Das Session-Cookie ist ungültig (kein `op_session`, falsches Format oder abgelaufen). Lasse die Entwicklertools geöffnet, filtere die **Network**-Anfragen nach `connect.pluxee.app`, öffne eine passende Anfrage, wechsle zum Tab **Cookies** und kopiere die `op_session*`-Request-Cookies. Oder lass das Feld leer, um ohne fortzufahren."
     },
     "abort": {
       "already_configured": "Dieses Pluxee-Konto ist bereits konfiguriert.",

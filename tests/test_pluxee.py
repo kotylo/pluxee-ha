@@ -391,14 +391,14 @@ def test_client_reports_session_cookie_presence():
 
 
 def test_parse_cookie_header_raw_and_table_forms():
-    """Accept both a raw Cookie header and the DevTools Application-tab table."""
+    """Accept both a raw Cookie header and the DevTools request-cookie table."""
     from custom_components.pluxee.api import parse_cookie_header, serialize_cookies
 
     raw = "op_session=ABC; op_session.sig=SIG; op_interaction=X"
     jar = parse_cookie_header(raw)
     assert jar == {"op_session": "ABC", "op_session.sig": "SIG"}  # interaction dropped
 
-    # Application -> Cookies table paste (tab-separated columns, one per line).
+    # Network request -> Cookies table paste (tab-separated columns, one per line).
     table = (
         "op_interaction.legacy\tNt259\tconnect.pluxee.app\t/op\t...\t42\t✓\n"
         "op_session\t8kxyRxMQJht3kgcjELety\tconnect.pluxee.app\t/op\t...\t31\t✓\n"

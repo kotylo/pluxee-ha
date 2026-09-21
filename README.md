@@ -45,22 +45,21 @@ folder and restart.
 ## Setup
 
 1. *Settings → Devices & Services → Add Integration → Pluxee*.
-2. The dialog shows a **login link**. Open it in your normal web browser.
+2. The dialog shows a **login link**. Open it in your normal web browser and
+  keep Developer Tools open (press **F12**) while you log in.
 3. Log in with your Pluxee email, solve the captcha, and enter the one-time code
-   emailed to you.
-4. Your browser lands on a page that just shows a **loading spinner** — that is
-   expected. Copy the **full address-bar URL** (it starts with
-   `https://consumers.pluxee.at/oidc/callback?code=...`).
-5. Paste that URL back into the Home Assistant dialog **within ~60 seconds**
-   (the code expires quickly). If it expires, just reopen the link and retry.
-6. This token only is valid for 6 hours, so to automatically extend the session, **copy session key/value cookie** from the browser's developer tools (F12 → Application → Storage → Cookies for
-   `consumers.pluxee.at`):
-   - `op_session`
-   - `op_session.legacy.sig`
-   - `op_session.legacy`
-   - `op_session.sig`
-   
-   Paste those into the dialog to have a stable session.
+  emailed to you.
+4. In Developer Tools, keep the **Network** tab open and filter the request list
+  for `connect.pluxee.app`. Open a request to that domain, select its
+  **Cookies** tab, and copy the `op_session*` request cookies (`op_session`,
+  `op_session.sig`, `op_session.legacy`, and `op_session.legacy.sig`). Do not
+  copy cookies for `api.pluxee.app`.
+5. Paste the copied rows into the **Session cookie** field and leave the
+  callback URL empty. This is the recommended setup method.
+
+  Alternatively, after logging in, copy the full address-bar URL (it starts
+  with `https://consumers.pluxee.at/oidc/callback?code=...`) and paste it into
+  the dialog within ~60 seconds. The code expires quickly.
 
 That's it — your card balance sensors appear under a device per card.
 
@@ -68,7 +67,10 @@ That's it — your card balance sensors appear under a device per card.
 
 If the refresh token ever expires or is revoked, Home Assistant raises a
 *re-authentication* notification. Click it (or use *Reconfigure* on the
-integration) and repeat the same login-link → paste-URL steps as well as the cookie copy step.
+integration), keep Developer Tools open while logging in again, filter the
+**Network** requests for `connect.pluxee.app`, open a matching request, select
+its **Cookies** tab, and copy the `op_session*` request cookies into the
+**Session cookie** field.
 
 ## Adding it to a dashboard
 
