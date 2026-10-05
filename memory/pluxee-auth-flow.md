@@ -8,7 +8,7 @@ metadata:
 Pluxee Austria (consumers.pluxee.at) is a Next.js SPA backed by a standard `node-oidc-provider` IdP at `https://connect.pluxee.app/op`.
 
 Auth (OAuth2 authorization_code + PKCE, public client, token_endpoint_auth_method=none):
-- client_id (AT): `568135b2-84c2-46a1-b471-9c34238ed924`
+- client_id (AT): `b8425d52-0bfb-4130-9cf2-bd27f0188901`
 - redirect_uri: `https://consumers.pluxee.at/oidc/callback`
 - scope: `openid profile email phone offline_access`
 - authorize: `https://connect.pluxee.app/op/oidc/auth`, token: `.../op/oidc/token`
