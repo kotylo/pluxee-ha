@@ -3,34 +3,43 @@
     "step": {
       "user": {
         "title": "Connect your Pluxee account",
-        "description": "**Recommended — connect with just your session cookie** (no callback URL needed):\n\n1. Open the Pluxee login link in your normal browser and keep Developer Tools open (press **F12**) while you log in. Complete the email, captcha, and one-time code steps. If you are already logged in, continue with step 2.\n2. In Developer Tools, keep the **Network** tab open and filter the request list for `connect.pluxee.app`. Open a request to that domain, select its **Cookies** tab, and copy the `op_session*` request cookies (`op_session`, `op_session.sig`, `op_session.legacy`, `op_session.legacy.sig`). Do not copy cookies for `api.pluxee.app`.\n3. Paste the copied rows into the **Session cookie** field below and submit. Leave the callback URL empty.\n\n*Alternative (callback URL):* open the login link {auth_url}, log in, and copy the full address-bar URL that starts with `.../oidc/callback?code=...`.",
+        "description": "**Connect using your session cookie:**\n\n1. Open [the /op/ page]({auth_url}&prompt=login) in your normal browser and log in normally. Complete any required consent screens; newsletter consent is optional.\n2. After logging in, reopen [the /op/ page]({auth_url}&prompt=login).\n3. Press **F12 → Application → Cookies → https://connect.pluxee.app**. Copy all `op_session*` rows, including signature/legacy rows.\n4. Paste the rows into **Session cookie** below and leave **Callback URL** empty.",
         "data": {
-          "callback_url": "Callback URL (optional — leave empty if you pasted the cookie)",
-          "session_cookie": "Session cookie (recommended)"
+          "session_cookie": "Session cookie (recommended)",
+          "callback_url": "Callback URL (optional alternative)"
+        },
+        "data_description": {
+          "session_cookie": "*Alternative (optional):* Open [the Pluxee login link]({auth_url}), capture the full `.../oidc/callback?code=...` URL before the portal consumes the one-time code, and paste it into **Callback URL** below. Submit immediately (within about 60 seconds). Leave this field empty when using a session cookie."
         }
       },
       "reauth_confirm": {
         "title": "Re-authenticate Pluxee",
-        "description": "Your Pluxee session expired. **Recommended:** open the Pluxee login link in your browser and keep Developer Tools open (press **F12**) while you log in again. In Developer Tools, keep the **Network** tab open and filter the request list for `connect.pluxee.app`. Open a request to that domain, select its **Cookies** tab, copy the `op_session*` request cookies, and paste them into the **Session cookie** field below. Leave the callback URL empty.\n\n*Alternative:* open this link {auth_url}, log in, and paste the resulting `.../oidc/callback?code=...` URL.",
+        "description": "Pluxee requires a fresh login or consent. **Connect using your session cookie:**\n\n1. Open [the /op/ page]({auth_url}&prompt=login) in your normal browser and log in normally. Complete any required consent screens; newsletter consent is optional.\n2. After logging in, reopen [the /op/ page]({auth_url}&prompt=login).\n3. Press **F12 → Application → Cookies → https://connect.pluxee.app**. Copy all `op_session*` rows, including signature/legacy rows.\n4. Paste the rows into **Session cookie** below and leave **Callback URL** empty.",
         "data": {
-          "callback_url": "Callback URL (optional — leave empty if you pasted the cookie)",
-          "session_cookie": "Session cookie (recommended)"
+          "session_cookie": "Session cookie (recommended)",
+          "callback_url": "Callback URL (optional alternative)"
+        },
+        "data_description": {
+          "session_cookie": "*Alternative (optional):* Open [the Pluxee login link]({auth_url}), capture the full `.../oidc/callback?code=...` URL before the portal consumes the one-time code, and paste it into **Callback URL** below. Submit immediately (within about 60 seconds). Leave this field empty when using a session cookie."
         }
       },
       "reconfigure": {
         "title": "Reconfigure Pluxee",
-        "description": "**Recommended:** open the Pluxee login link in your browser and keep Developer Tools open (press **F12**) while you log in. In Developer Tools, keep the **Network** tab open and filter the request list for `connect.pluxee.app`. Open a request to that domain, select its **Cookies** tab, copy the `op_session*` request cookies, and paste them into the **Session cookie** field below. Leave the callback URL empty.\n\n*Alternative:* open this link {auth_url}, log in, and paste the resulting `.../oidc/callback?code=...` URL.",
+        "description": "**Connect using your session cookie:**\n\n1. Open [the /op/ page]({auth_url}&prompt=login) in your normal browser and log in normally. Complete any required consent screens; newsletter consent is optional.\n2. After logging in, reopen [the /op/ page]({auth_url}&prompt=login).\n3. Press **F12 → Application → Cookies → https://connect.pluxee.app**. Copy all `op_session*` rows, including signature/legacy rows.\n4. Paste the rows into **Session cookie** below and leave **Callback URL** empty.",
         "data": {
-          "callback_url": "Callback URL (optional — leave empty if you pasted the cookie)",
-          "session_cookie": "Session cookie (recommended)"
+          "session_cookie": "Session cookie (recommended)",
+          "callback_url": "Callback URL (optional alternative)"
+        },
+        "data_description": {
+          "session_cookie": "*Alternative (optional):* Open [the Pluxee login link]({auth_url}), capture the full `.../oidc/callback?code=...` URL before the portal consumes the one-time code, and paste it into **Callback URL** below. Submit immediately (within about 60 seconds). Leave this field empty when using a session cookie."
         }
       }
     },
     "error": {
-      "no_code": "Nothing to authenticate with. Paste your session cookie (the `op_session*` rows for `connect.pluxee.app`) — or, if using the callback method, the whole URL that contains `code=`.",
+      "no_code": "Paste your `op_session*` cookies into Session cookie, or use the optional callback method below.",
       "invalid_auth": "Login failed or the code expired. Open the link again, log in and paste the new URL quickly.",
       "cannot_connect": "Could not reach Pluxee. Please try again.",
-      "session_cookie_invalid": "The session cookie is not valid (no `op_session`, wrong format, or expired). Keep Developer Tools open, filter the **Network** requests for `connect.pluxee.app`, open a matching request, select its **Cookies** tab, and copy the `op_session*` request cookies. Or leave the field empty to continue without it."
+      "session_cookie_invalid": "Pluxee could not authorize with these cookies. Complete login and required consent, reopen the /op/ page, then copy all `op_session*` rows from F12 → Application → Cookies → https://connect.pluxee.app."
     },
     "abort": {
       "already_configured": "This Pluxee account is already configured.",

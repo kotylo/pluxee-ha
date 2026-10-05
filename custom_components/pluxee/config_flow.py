@@ -52,12 +52,13 @@ _STEP_SCHEMA = vol.Schema(
         # callback URL/code OR just the session cookie. The cookie-only path is
         # now the primary one because Pluxee's callback page auto-redirects and
         # consumes the one-time code before it can be copied.
-        vol.Optional(CONF_CALLBACK_URL, default=""): str,
         # Multiline so a pasted DevTools cookie table (multiple lines) survives
         # intact instead of being collapsed to a single line.
         vol.Optional(CONF_SESSION_COOKIE, default=""): TextSelector(
             TextSelectorConfig(multiline=True)
         ),
+        # The callback alternative follows the cookie input and its helper text.
+        vol.Optional(CONF_CALLBACK_URL, default=""): str,
     }
 )
 

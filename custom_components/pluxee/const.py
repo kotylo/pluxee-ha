@@ -5,18 +5,16 @@ from datetime import timedelta
 
 DOMAIN = "pluxee"
 
-# OIDC / OAuth2 (Pluxee Connect, Austria consumer client)
+# OIDC / OAuth2 (current EVA Austria consumer portal client, checked 2026-10-04)
 OIDC_AUTHORITY = "https://connect.pluxee.app/op"
 AUTHORIZE_ENDPOINT = f"{OIDC_AUTHORITY}/oidc/auth"
 TOKEN_ENDPOINT = f"{OIDC_AUTHORITY}/oidc/token"
-CLIENT_ID = "568135b2-84c2-46a1-b471-9c34238ed924"
+CLIENT_ID = "b8425d52-0bfb-4130-9cf2-bd27f0188901"
 REDIRECT_URI = "https://consumers.pluxee.at/oidc/callback"
-# NOTE: this client registration does NOT permit "offline_access" - requesting
-# it makes the authorize endpoint return error=invalid_scope. Without it the
-# refresh token is bound to the OP session and has a short inactivity timeout,
-# so the integration must keep it warm with a periodic keep-alive refresh
-# (see PluxeeCoordinator) rather than rely on a long-lived offline token.
-SCOPE = "openid profile email phone"
+# Match the official portal's scopes. The integration does not need phone data
+# or request offline access; retain keep-alive and cookie recovery for the
+# session-bound refresh tokens (see PluxeeCoordinator).
+SCOPE = "openid profile email"
 
 # Consumer API (the "eva/bff" backend the consumers.pluxee.at SPA uses). Pluxee
 # migrated off the old /gl/cwc/consumer-front-api ("cardsInfos") endpoints around

@@ -64,9 +64,8 @@ def build_authorize_url(
 ) -> str:
     """Build the OAuth2 authorize URL.
 
-    ``prompt`` is normally omitted for the interactive login. ``prompt="none"``
-    is used for silent re-authentication (no user interaction) when a valid OP
-    session cookie is available.
+    ``prompt`` is normally omitted, including for cookie-based recovery, so
+    the provider can redirect through any previously approved consent step.
     """
     params = {
         "client_id": CLIENT_ID,
@@ -455,7 +454,7 @@ class PluxeeClient:
                 tokens = await async_refresh(self._session, self._refresh_token)
             except PluxeeAuthError:
                 # The session-bound refresh token was rejected. If we have an OP
-                # session cookie, recover silently (prompt=none) instead of
+                # session cookie, recover silently instead of
                 # forcing the user to re-authenticate.
                 if not self._session_cookie:
                     raise
@@ -481,10 +480,10 @@ class PluxeeClient:
     async def _async_silent_reauth(self) -> None:
         """Mint fresh tokens without user interaction using the OP session cookie.
 
-        Performs an OAuth2 authorize request with ``prompt=none`` carrying the
+        Performs a normal OAuth2 authorize request carrying the
         session cookie, captures the returned authorization code from the
         redirect, and exchanges it for new tokens. Raises ``PluxeeAuthError`` if
-        the session cookie is missing/expired (the OP then requires interaction).
+        the cookie is missing/expired or the provider requires fresh consent.
         """
         if not self._session_cookie:
             raise PluxeeAuthError("No session cookie available for silent re-auth")
@@ -494,9 +493,9 @@ class PluxeeClient:
         # Deliberately NOT prompt=none: once the short-lived grant needs a
         # refresh, prompt=none makes the OP reject with interaction_required.
         # A normal authorize instead walks through the /interaction/consent
-        # step, which node-oidc-provider auto-confirms (the user already
-        # consented at login) and returns a code - all unattended, as long as
-        # the op_session SSO cookie is still valid.
+        # step, which can auto-confirm previously approved consent and return
+        # a code unattended. New terms or consent still require the user's
+        # browser even if the SSO session cookie is valid.
         url = build_authorize_url(challenge, state, nonce)
         code = await self._async_follow_silent_authorize(url, state)
         tokens = await async_exchange_code(self._session, code, verifier)
@@ -524,13 +523,13 @@ class PluxeeClient:
         return True
 
     async def _async_follow_silent_authorize(self, url: str, state: str) -> str:
-        """Follow the prompt=none authorize redirects and return the auth code."""
+        """Follow authorize redirects and return the auth code if unattended."""
         jar = parse_cookie_header(self._session_cookie or "")
         _LOGGER.debug("Silent re-auth sending session cookies: %s", sorted(jar))
-        if "op_session" not in jar:
+        if not any(name in jar for name in ("op_session", "_session")):
             _LOGGER.warning(
-                "Silent re-auth: stored cookie has no 'op_session' (only %s); it "
-                "will be rejected. Re-paste the cookie via Reconfigure.",
+                "Silent re-auth: stored cookie has no 'op_session' or '_session' "
+                "(only %s). Re-paste the cookie via Reconfigure.",
                 sorted(jar) or "nothing",
             )
         for hop in range(10):
@@ -561,16 +560,29 @@ class PluxeeClient:
                     f"Network error during silent re-auth: {err}"
                 ) from err
 
-            _LOGGER.debug("Silent re-auth hop %s -> HTTP %s", hop, status)
+            # Log only a known route label, never interaction IDs, query strings
+            # or response bodies (which can contain credentials/account data).
+            path = urlparse(url).path.rstrip("/")
+            step = path.rsplit("/", 1)[-1]
+            if step not in ("auth", "login", "consent", "confirm"):
+                step = "interaction"
+            _LOGGER.debug(
+                "Silent re-auth hop %s -> HTTP %s (step=%s)", hop, status, step
+            )
             if status not in (301, 302, 303, 307, 308):
                 if 200 <= status < 300:
-                    # The OP rendered an interaction (login/consent) page instead
-                    # of redirecting: the SSO session is genuinely expired and a
-                    # real (OTP) login is required. This 200 is the ONLY
-                    # definitive "session lost" signal.
+                    # A rendered page needs the user, but does not prove the
+                    # cookie expired: the provider may require renewed consent.
+                    if step in ("consent", "confirm"):
+                        raise PluxeeAuthError(
+                            f"Silent re-auth needs consent (HTTP {status}); "
+                            "complete the consent page in your browser and "
+                            "copy fresh session cookies after login finishes"
+                        )
                     raise PluxeeAuthError(
-                        f"Silent re-auth needs interaction (HTTP {status}); "
-                        "the session cookie is invalid or expired"
+                        f"Silent re-auth needs {step} (HTTP {status}); "
+                        "finish login and any consent steps in your browser "
+                        "and copy fresh session cookies"
                     )
                 # Anything else (408/425/429, 5xx backend recycle, or a stray 400
                 # from a half-built interaction hop) is transient infra noise, not
