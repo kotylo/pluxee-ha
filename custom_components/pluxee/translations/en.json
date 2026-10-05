@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Connect your Pluxee account",
-        "description": "**Connect using your session cookie:**\n\n1. Open [the /op/ page]({auth_url}&prompt=login) in your normal browser and log in normally. Complete any required consent screens; newsletter consent is optional.\n2. After logging in, reopen [the /op/ page]({auth_url}&prompt=login).\n3. Press **F12 → Application → Cookies → https://connect.pluxee.app**. Copy all `op_session*` rows, including signature/legacy rows.\n4. Paste the rows into **Session cookie** below and leave **Callback URL** empty.",
+        "description": "**Connect using your session cookie:**\n\n1. Open [the /op/ page]({auth_url}&prompt=login) in your normal browser and log in normally. Complete any required consent screens; newsletter consent is optional.\n2. After logging in, reopen [the /op/ page]({auth_url}&prompt=login).\n3. Press **F12 → Application → Cookies → {cookie_origin}**. Copy all `op_session*` rows, including signature/legacy rows.\n4. Paste the rows into **Session cookie** below and leave **Callback URL** empty.",
         "data": {
           "session_cookie": "Session cookie (recommended)",
           "callback_url": "Callback URL (optional alternative)"
@@ -14,7 +14,7 @@
       },
       "reauth_confirm": {
         "title": "Re-authenticate Pluxee",
-        "description": "Pluxee requires a fresh login or consent. **Connect using your session cookie:**\n\n1. Open [the /op/ page]({auth_url}&prompt=login) in your normal browser and log in normally. Complete any required consent screens; newsletter consent is optional.\n2. After logging in, reopen [the /op/ page]({auth_url}&prompt=login).\n3. Press **F12 → Application → Cookies → https://connect.pluxee.app**. Copy all `op_session*` rows, including signature/legacy rows.\n4. Paste the rows into **Session cookie** below and leave **Callback URL** empty.",
+        "description": "Pluxee requires a fresh login or consent. **Connect using your session cookie:**\n\n1. Open [the /op/ page]({auth_url}&prompt=login) in your normal browser and log in normally. Complete any required consent screens; newsletter consent is optional.\n2. After logging in, reopen [the /op/ page]({auth_url}&prompt=login).\n3. Press **F12 → Application → Cookies → {cookie_origin}**. Copy all `op_session*` rows, including signature/legacy rows.\n4. Paste the rows into **Session cookie** below and leave **Callback URL** empty.",
         "data": {
           "session_cookie": "Session cookie (recommended)",
           "callback_url": "Callback URL (optional alternative)"
@@ -25,7 +25,7 @@
       },
       "reconfigure": {
         "title": "Reconfigure Pluxee",
-        "description": "**Connect using your session cookie:**\n\n1. Open [the /op/ page]({auth_url}&prompt=login) in your normal browser and log in normally. Complete any required consent screens; newsletter consent is optional.\n2. After logging in, reopen [the /op/ page]({auth_url}&prompt=login).\n3. Press **F12 → Application → Cookies → https://connect.pluxee.app**. Copy all `op_session*` rows, including signature/legacy rows.\n4. Paste the rows into **Session cookie** below and leave **Callback URL** empty.",
+        "description": "**Connect using your session cookie:**\n\n1. Open [the /op/ page]({auth_url}&prompt=login) in your normal browser and log in normally. Complete any required consent screens; newsletter consent is optional.\n2. After logging in, reopen [the /op/ page]({auth_url}&prompt=login).\n3. Press **F12 → Application → Cookies → {cookie_origin}**. Copy all `op_session*` rows, including signature/legacy rows.\n4. Paste the rows into **Session cookie** below and leave **Callback URL** empty.",
         "data": {
           "session_cookie": "Session cookie (recommended)",
           "callback_url": "Callback URL (optional alternative)"
@@ -39,7 +39,7 @@
       "no_code": "Paste your `op_session*` cookies into Session cookie, or use the optional callback method below.",
       "invalid_auth": "Login failed or the code expired. Open the link again, log in and paste the new URL quickly.",
       "cannot_connect": "Could not reach Pluxee. Please try again.",
-      "session_cookie_invalid": "Pluxee could not authorize with these cookies. Complete login and required consent, reopen the /op/ page, then copy all `op_session*` rows from F12 → Application → Cookies → https://connect.pluxee.app."
+      "session_cookie_invalid": "Pluxee could not authorize with these cookies. Complete login and required consent, reopen the /op/ page, then copy all `op_session*` rows from F12 → Application → Cookies → {cookie_origin}."
     },
     "abort": {
       "already_configured": "This Pluxee account is already configured.",

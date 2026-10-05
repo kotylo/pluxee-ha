@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Pluxee-Konto verbinden",
-        "description": "**Mit Ihrem Sitzungscookie verbinden:**\n\n1. Öffnen Sie [die /op/-Seite]({auth_url}&prompt=login) in Ihrem normalen Browser und melden Sie sich wie gewohnt an. Schließen Sie alle erforderlichen Zustimmungen ab; die Newsletter-Zustimmung ist optional.\n2. Öffnen Sie nach der Anmeldung erneut [die /op/-Seite]({auth_url}&prompt=login).\n3. Drücken Sie **F12 → Anwendung (Application) → Cookies → https://connect.pluxee.app**. Kopieren Sie alle `op_session*`-Zeilen einschließlich Signatur-/Legacy-Zeilen.\n4. Fügen Sie die Zeilen unten in **Session-Cookie** ein und lassen Sie **Callback-URL** leer.",
+        "description": "**Mit Ihrem Sitzungscookie verbinden:**\n\n1. Öffnen Sie [die /op/-Seite]({auth_url}&prompt=login) in Ihrem normalen Browser und melden Sie sich wie gewohnt an. Schließen Sie alle erforderlichen Zustimmungen ab; die Newsletter-Zustimmung ist optional.\n2. Öffnen Sie nach der Anmeldung erneut [die /op/-Seite]({auth_url}&prompt=login).\n3. Drücken Sie **F12 → Anwendung (Application) → Cookies → {cookie_origin}**. Kopieren Sie alle `op_session*`-Zeilen einschließlich Signatur-/Legacy-Zeilen.\n4. Fügen Sie die Zeilen unten in **Session-Cookie** ein und lassen Sie **Callback-URL** leer.",
         "data": {
           "session_cookie": "Session-Cookie (empfohlen)",
           "callback_url": "Callback-URL (optionale Alternative)"
@@ -14,7 +14,7 @@
       },
       "reauth_confirm": {
         "title": "Pluxee erneut anmelden",
-        "description": "Pluxee benötigt eine neue Anmeldung oder Zustimmung. **Mit Ihrem Sitzungscookie verbinden:**\n\n1. Öffnen Sie [die /op/-Seite]({auth_url}&prompt=login) in Ihrem normalen Browser und melden Sie sich wie gewohnt an. Schließen Sie alle erforderlichen Zustimmungen ab; die Newsletter-Zustimmung ist optional.\n2. Öffnen Sie nach der Anmeldung erneut [die /op/-Seite]({auth_url}&prompt=login).\n3. Drücken Sie **F12 → Anwendung (Application) → Cookies → https://connect.pluxee.app**. Kopieren Sie alle `op_session*`-Zeilen einschließlich Signatur-/Legacy-Zeilen.\n4. Fügen Sie die Zeilen unten in **Session-Cookie** ein und lassen Sie **Callback-URL** leer.",
+        "description": "Pluxee benötigt eine neue Anmeldung oder Zustimmung. **Mit Ihrem Sitzungscookie verbinden:**\n\n1. Öffnen Sie [die /op/-Seite]({auth_url}&prompt=login) in Ihrem normalen Browser und melden Sie sich wie gewohnt an. Schließen Sie alle erforderlichen Zustimmungen ab; die Newsletter-Zustimmung ist optional.\n2. Öffnen Sie nach der Anmeldung erneut [die /op/-Seite]({auth_url}&prompt=login).\n3. Drücken Sie **F12 → Anwendung (Application) → Cookies → {cookie_origin}**. Kopieren Sie alle `op_session*`-Zeilen einschließlich Signatur-/Legacy-Zeilen.\n4. Fügen Sie die Zeilen unten in **Session-Cookie** ein und lassen Sie **Callback-URL** leer.",
         "data": {
           "session_cookie": "Session-Cookie (empfohlen)",
           "callback_url": "Callback-URL (optionale Alternative)"
@@ -25,7 +25,7 @@
       },
       "reconfigure": {
         "title": "Pluxee neu konfigurieren",
-        "description": "**Mit Ihrem Sitzungscookie verbinden:**\n\n1. Öffnen Sie [die /op/-Seite]({auth_url}&prompt=login) in Ihrem normalen Browser und melden Sie sich wie gewohnt an. Schließen Sie alle erforderlichen Zustimmungen ab; die Newsletter-Zustimmung ist optional.\n2. Öffnen Sie nach der Anmeldung erneut [die /op/-Seite]({auth_url}&prompt=login).\n3. Drücken Sie **F12 → Anwendung (Application) → Cookies → https://connect.pluxee.app**. Kopieren Sie alle `op_session*`-Zeilen einschließlich Signatur-/Legacy-Zeilen.\n4. Fügen Sie die Zeilen unten in **Session-Cookie** ein und lassen Sie **Callback-URL** leer.",
+        "description": "**Mit Ihrem Sitzungscookie verbinden:**\n\n1. Öffnen Sie [die /op/-Seite]({auth_url}&prompt=login) in Ihrem normalen Browser und melden Sie sich wie gewohnt an. Schließen Sie alle erforderlichen Zustimmungen ab; die Newsletter-Zustimmung ist optional.\n2. Öffnen Sie nach der Anmeldung erneut [die /op/-Seite]({auth_url}&prompt=login).\n3. Drücken Sie **F12 → Anwendung (Application) → Cookies → {cookie_origin}**. Kopieren Sie alle `op_session*`-Zeilen einschließlich Signatur-/Legacy-Zeilen.\n4. Fügen Sie die Zeilen unten in **Session-Cookie** ein und lassen Sie **Callback-URL** leer.",
         "data": {
           "session_cookie": "Session-Cookie (empfohlen)",
           "callback_url": "Callback-URL (optionale Alternative)"
@@ -39,7 +39,7 @@
       "no_code": "Fügen Sie Ihre `op_session*`-Cookies in Session-Cookie ein oder verwenden Sie unten die optionale Callback-Methode.",
       "invalid_auth": "Anmeldung fehlgeschlagen oder Code abgelaufen. Öffne den Link erneut, melde dich an und füge die neue URL schnell ein.",
       "cannot_connect": "Pluxee konnte nicht erreicht werden. Bitte versuche es erneut.",
-      "session_cookie_invalid": "Pluxee konnte mit diesen Cookies keine Anmeldung durchführen. Schließen Sie die Anmeldung und erforderlichen Zustimmungen ab, öffnen Sie die /op/-Seite erneut und kopieren Sie alle `op_session*`-Zeilen aus F12 → Anwendung (Application) → Cookies → https://connect.pluxee.app."
+      "session_cookie_invalid": "Pluxee konnte mit diesen Cookies keine Anmeldung durchführen. Schließen Sie die Anmeldung und erforderlichen Zustimmungen ab, öffnen Sie die /op/-Seite erneut und kopieren Sie alle `op_session*`-Zeilen aus F12 → Anwendung (Application) → Cookies → {cookie_origin}."
     },
     "abort": {
       "already_configured": "Dieses Pluxee-Konto ist bereits konfiguriert.",

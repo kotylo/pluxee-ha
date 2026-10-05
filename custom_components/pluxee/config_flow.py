@@ -40,6 +40,7 @@ from .const import (
     DEFAULT_SCAN_INTERVAL_HOURS,
     DEFAULT_TX_LIMIT,
     DOMAIN,
+    OIDC_AUTHORITY,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -198,7 +199,10 @@ class PluxeeConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user",
             data_schema=_STEP_SCHEMA,
-            description_placeholders={"auth_url": self._auth_url or self._new_auth_url()},
+            description_placeholders={
+                "auth_url": self._auth_url or self._new_auth_url(),
+                "cookie_origin": OIDC_AUTHORITY.removesuffix("/op"),
+            },
             errors=errors,
         )
 
@@ -244,7 +248,10 @@ class PluxeeConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="reauth_confirm",
             data_schema=_STEP_SCHEMA,
-            description_placeholders={"auth_url": self._auth_url or self._new_auth_url()},
+            description_placeholders={
+                "auth_url": self._auth_url or self._new_auth_url(),
+                "cookie_origin": OIDC_AUTHORITY.removesuffix("/op"),
+            },
             errors=errors,
         )
 
@@ -280,7 +287,10 @@ class PluxeeConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="reconfigure",
             data_schema=_STEP_SCHEMA,
-            description_placeholders={"auth_url": self._auth_url or self._new_auth_url()},
+            description_placeholders={
+                "auth_url": self._auth_url or self._new_auth_url(),
+                "cookie_origin": OIDC_AUTHORITY.removesuffix("/op"),
+            },
             errors=errors,
         )
 
