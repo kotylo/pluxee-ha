@@ -8,7 +8,7 @@ into a **Pluxee Austria** consumer account and exposes card balances and recent
 transactions as sensors. Unofficial; built by reverse-engineering the
 `consumers.pluxee.at` SPA + `api.pluxee.app`.
 
-Test account: `somesodexo@gmail.com`, country `AT`, 2 cards (Meal Pass SPAML,
+Test account: credentials are kept locally in ignored files, country `AT`, 2 cards (Meal Pass SPAML,
 Food Pass SPAFX).
 
 ## ⚠️ Privacy — sanitize before finishing (NEVER commit real account data)
@@ -61,20 +61,35 @@ saw and confirm zero hits, e.g.
 OIDC provider = `node-oidc-provider` at `https://connect.pluxee.app/op`
 (discovery: `/op/.well-known/openid-configuration`). OAuth2 **authorization_code + PKCE**,
 public client (`token_endpoint_auth_method=none`).
-- client_id (AT): `568135b2-84c2-46a1-b471-9c34238ed924`
+- client_id (AT EVA portal, checked 2026-10-04): `b8425d52-0bfb-4130-9cf2-bd27f0188901`
 - redirect_uri: `https://consumers.pluxee.at/oidc/callback`
-- scope: `openid profile email phone offline_access`
+- scope: `openid profile email` (matches the current portal)
 - authorize: `https://connect.pluxee.app/op/oidc/auth` ; token: `.../op/oidc/token`
 
 **hCaptcha blocks headless login.** The email-submission step uses invisible
 hCaptcha enforced server-side. Automated browsers (Playwright) are refused; a
 tokenless form POST just re-renders. => HA cannot send the OTP itself. The
 config flow therefore is **manual**: generate authorize URL (our PKCE) → user logs
-in in a real browser (email+captcha+OTP) → user keeps DevTools open, filters the
-Network requests for `connect.pluxee.app`, opens a matching request, and copies
-the `op_session*` request cookies from its Cookies tab → HA exchanges them for
+in in a real browser (email+captcha+OTP) → user reopens the interactive `/op/`
+link with `prompt=login`, then uses **F12 → Application → Cookies →
+https://connect.pluxee.app** to copy all `op_session*` rows → HA exchanges them for
 tokens. The callback URL remains an alternative when it can be copied. **Auth
-code TTL ≈ 60s**, exchange immediately.
+code TTL ≈ 60s**, exchange immediately. Complete required consent screens before
+copying session cookies. Newsletter consent is optional. The callback field and
+its login link follow the session-cookie field; alternative instructions use
+`data_description.session_cookie` for HA's native helper-text styling.
+v0.3.2 switches from the old CwC client
+to the live EVA client; old-client refresh tokens may need a fresh login. Logs
+label authorize/login/consent steps without exposing interaction IDs or queries.
+
+**Cookie capture verified 2026-10-05:** after successful portal login, reopen the
+interactive authorize URL with `&prompt=login` appended. This leaves an
+`/op/interaction/.../login` page open; copy cookies from **Application → Cookies**
+without entering email again. Its Network **Request Cookies** are also a source.
+Include all `op_session*` signature/legacy rows. The
+`/am/` account-page cookie list/request can omit the OP session; `am_session_at`,
+`op_device`, and affinity cookies alone do not authorize OAuth. Keep this as a
+manual capture instruction; do NOT add `prompt=login` to silent re-auth.
 
 **Refresh tokens ROTATE on every use.** Always persist the new `refresh_token`
 returned by each refresh (coordinator does this via `token_updated_cb` →
@@ -188,3 +203,11 @@ even though it looks unexpired. Two safeguards (added v0.2.2):
 ## Environment
 Windows host (PowerShell + Python 3.12 via Store stub — works from PowerShell, blocked in
 bash). Node available. WSL Ubuntu for HA tests. No git repo yet.
+
+## Deployment
+`copy-to-server.ps1` uses SSH/SCP and the ignored `.env` server settings.
+Backups belong in `config/.pluxee-deployments`, outside `custom_components`.
+HA scans hidden direct subdirectories too: a `.pluxee-backup-*` with a Pluxee
+manifest can shadow the live integration and fail importing `custom_components.`.
+The installer relocates legacy backups; `tests/test_deployment.py` checks actual
+HA discovery after running the installer in a temporary directory.
