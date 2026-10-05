@@ -36,7 +36,7 @@ def _token_response(refresh="REFRESH1") -> dict:
         "refresh_token": refresh,
         "expires_in": 1800,
         "id_token": _id_token("sodexo@gmail.com"),
-        "scope": "openid profile email phone",
+        "scope": "openid profile email",
         "token_type": "Bearer",
     }
 
@@ -778,6 +778,81 @@ async def test_silent_reauth_408_is_transient_not_auth_error():
         await client._async_follow_silent_authorize(
             "https://connect.pluxee.app/op/oidc/auth?x=1", "state123"
         )
+
+
+@pytest.mark.parametrize("step", ["login", "consent"])
+async def test_silent_reauth_reports_interactive_step_without_secrets(step, caplog):
+    """Renewed consent must be distinguishable from login without leaking URLs."""
+    import logging
+
+    from custom_components.pluxee.api import PluxeeAuthError, PluxeeClient
+
+    sess = _FakeSession(
+        get_responses=[
+            _FakeResp(
+                303,
+                headers={
+                    "Location": (
+                        "https://connect.pluxee.app/op/interaction/SECRET_ID/"
+                        f"{step}?token=SECRET_QUERY"
+                    )
+                },
+            ),
+            _FakeResp(200),
+        ],
+        post_responses=[],
+    )
+    client = PluxeeClient(
+        session=sess,
+        refresh_token="RT",
+        session_cookie="op_session=SECRET_COOKIE; op_session.sig=SIG",
+    )
+    with caplog.at_level(logging.DEBUG, logger="custom_components.pluxee.api"):
+        with pytest.raises(PluxeeAuthError, match=f"needs {step}") as exc:
+            await client._async_follow_silent_authorize(
+                "https://connect.pluxee.app/op/oidc/auth", "STATE"
+            )
+
+    output = caplog.text + str(exc.value)
+    assert f"step={step}" in output
+    assert "SECRET_ID" not in output
+    assert "SECRET_QUERY" not in output
+    assert "SECRET_COOKIE" not in output
+    assert "invalid or expired" not in str(exc.value)
+    assert sess.post_calls == 0  # displayed consent is left to the user
+
+
+async def test_authorize_and_token_requests_use_current_portal_client():
+    """Every OAuth grant must target the same current Austrian portal client."""
+    from urllib.parse import parse_qs, urlparse
+
+    from custom_components.pluxee.api import (
+        async_exchange_code,
+        async_refresh,
+        build_authorize_url,
+    )
+
+    expected_client = "b8425d52-0bfb-4130-9cf2-bd27f0188901"
+    query = parse_qs(urlparse(build_authorize_url("CHALLENGE", "STATE", "NONCE")).query)
+    assert query["client_id"] == [expected_client]
+    assert query["scope"] == ["openid profile email"]
+    assert "prompt" not in query
+
+    class Session(_FakeSession):
+        def post(self, url, data=None, **kwargs):
+            assert data["client_id"] == expected_client
+            return super().post(url, data=data, **kwargs)
+
+    sess = Session(
+        get_responses=[],
+        post_responses=[
+            _FakeResp(200, body=json.dumps(_token_response())),
+            _FakeResp(200, body=json.dumps(_token_response(refresh="REFRESH2"))),
+        ],
+    )
+    await async_exchange_code(sess, "CODE", "VERIFIER")
+    await async_refresh(sess, "REFRESH1")
+    assert sess.post_calls == 2
 
 
 async def test_silent_reauth_400_at_interaction_hop_is_transient():

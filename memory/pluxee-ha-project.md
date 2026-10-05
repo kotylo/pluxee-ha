@@ -7,7 +7,7 @@ metadata:
 
 Project: a Home Assistant custom integration (HACS-style custom_component `pluxee`) that logs into the user's Pluxee Austria account and exposes card balances as sensors. Started 2026-06-15.
 
-User account for testing: `somesodexo@gmail.com`, country AT, two cards (Meal Pass, Food Pass).
+User account for testing: `test@example.com`, country AT, two cards (Meal Pass, Food Pass).
 
 Key design (see [[pluxee-auth-flow]] for the why):
 - Config flow uses manual OAuth-code paste because login needs a real browser (hCaptcha).

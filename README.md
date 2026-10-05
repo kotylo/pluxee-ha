@@ -42,24 +42,39 @@ session in the background without any captcha.
 Copy `custom_components/pluxee` into your Home Assistant `config/custom_components/`
 folder and restart.
 
+### Copy to your server with PowerShell
+
+The `copy-to-server.ps1` script uses PowerShell 7 and OpenSSH (`ssh` / `scp`)
+with key-based authentication.
+
+Copy `.env.example` to `.env` and set `HA_HOST`, `HA_USER`, and
+`HA_CUSTOM_COMPONENTS_PATH` (the server's absolute `custom_components` path).
+The local `.env` is ignored by Git. Then run:
+
+```powershell
+pwsh -File .\copy-to-server.ps1
+```
+Backups are kept in `config/.pluxee-deployments`, outside `custom_components`
+so Home Assistant cannot discover a backup as a duplicate integration. The
+script also relocates backups created by older script versions.
+Restart Home Assistant after a successful copy.
+
 ## Setup
 
 1. *Settings → Devices & Services → Add Integration → Pluxee*.
-2. The dialog shows a **login link**. Open it in your normal web browser and
-  keep Developer Tools open (press **F12**) while you log in.
-3. Log in with your Pluxee email, solve the captcha, and enter the one-time code
-  emailed to you.
-4. In Developer Tools, keep the **Network** tab open and filter the request list
-  for `connect.pluxee.app`. Open a request to that domain, select its
-  **Cookies** tab, and copy the `op_session*` request cookies (`op_session`,
-  `op_session.sig`, `op_session.legacy`, and `op_session.legacy.sig`). Do not
-  copy cookies for `api.pluxee.app`.
-5. Paste the copied rows into the **Session cookie** field and leave the
-  callback URL empty. This is the recommended setup method.
+2. Open the dialog's **/op/ page** link in your normal browser and log in normally.
+  Complete any required consent screens; the newsletter checkbox is optional.
+3. After logging in, reopen that link to view the `/op/` login page, or
+  [open the /op/ page](https://connect.pluxee.app/op/) to inspect cookies.
+4. Press **F12** → **Application → Cookies → https://connect.pluxee.app**.
+  Copy all `op_session*` rows, including `op_session.sig` and any `.legacy` /
+  `.legacy.sig` rows.
+5. Paste the rows into **Session cookie** and leave **Callback URL** empty.
 
-  Alternatively, after logging in, copy the full address-bar URL (it starts
-  with `https://consumers.pluxee.at/oidc/callback?code=...`) and paste it into
-  the dialog within ~60 seconds. The code expires quickly.
+The optional callback method appears below the session-cookie field. Use
+**the Pluxee login link** in that alternative section, capture the full
+`https://consumers.pluxee.at/oidc/callback?code=...` URL before the portal consumes
+the one-time code, and submit it immediately (within about 60 seconds).
 
 That's it — your card balance sensors appear under a device per card.
 
@@ -67,10 +82,16 @@ That's it — your card balance sensors appear under a device per card.
 
 If the refresh token ever expires or is revoked, Home Assistant raises a
 *re-authentication* notification. Click it (or use *Reconfigure* on the
-integration), keep Developer Tools open while logging in again, filter the
-**Network** requests for `connect.pluxee.app`, open a matching request, select
-its **Cookies** tab, and copy the `op_session*` request cookies into the
-**Session cookie** field.
+integration), then follow the setup steps above: log in, reopen the **/op/ page**,
+and copy the `op_session*` cookies from **F12 → Application → Cookies**.
+An interactive consent page can require reauthentication even when the stored
+session cookie has not expired; the integration cannot accept terms for you.
+
+As checked on 2026-10-04, the live Austrian portal uses the **EVA Austria** OAuth
+client and `openid profile email` scopes. Version **0.3.2** aligns the integration
+with that configuration. After updating and restarting Home Assistant, complete
+one fresh login if prompted: refresh tokens issued to the previous client cannot
+be refreshed using the new client ID. The balance API endpoints are unchanged.
 
 ## Adding it to a dashboard
 
@@ -219,13 +240,13 @@ These are used for authentication via the Sodexo Connect platform. If you want t
 
 | Country Code | GUID |
 | :--- | :--- |
-| **AT** (Austria) | `568135b2-84c2-46a1-b471-9c34238ed924` |
-| **BE** (Belgium) | `c6d7526f-b20b-40d4-bd4a-09e8701eb4a1` |
-| **BG** (Bulgaria) | `23e18b22-e628-4277-beec-14cd5a8af660` |
-| **DE** (Germany) | `6c12015c-07be-45e8-b930-7d4d457876d4` |
-| **LU** (Luxembourg) | `8efd36ca-99d2-4943-90cc-74d2b25788c2` |
-| **RO** (Romania) | `baa95e6c-bc57-4543-bd06-0997f46505d5` |
-| **TN** (Tunisia) | `abf8a6ed-ef49-41a8-b5e4-ec5e48245313` |
+| **AT** (Austria) | `b8425d52-0bfb-4130-9cf2-bd27f0188901` |
+| **BE** (Belgium) | **changed since last update** |
+| **BG** (Bulgaria) | **changed since last update** |
+| **DE** (Germany) | **changed since last update** |
+| **LU** (Luxembourg) | **changed since last update** |
+| **RO** (Romania) | **changed since last update** |
+| **TN** (Tunisia) | **changed since last update** |
 
 ## Disclaimer
 
