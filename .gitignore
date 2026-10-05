@@ -2,6 +2,9 @@
 # NEVER publish this to a public repo.
 explore/
 creds.txt
+.env
+.env.*
+!.env.example
 
 # Python
 __pycache__/
