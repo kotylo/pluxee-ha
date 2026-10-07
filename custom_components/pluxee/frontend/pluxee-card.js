@@ -94,6 +94,13 @@ const TEMPLATE = `
   </ha-card>
 `;
 
+// Extra frontend modules can run before HA installs its scoped-element
+// polyfill, which replaces both customElements and HTMLElement. Wait before
+// declaring the class so a fast load cannot register it in the old registry.
+// The polyfill defines a native stand-in for home-assistant, so this also
+// resolves when whenDefined() was called on the original native registry.
+await customElements.whenDefined("home-assistant");
+
 class PluxeeCard extends HTMLElement {
   constructor() {
     super();

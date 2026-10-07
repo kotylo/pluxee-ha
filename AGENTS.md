@@ -47,6 +47,11 @@ saw and confirm zero hits, e.g.
   `entity` (balance sensor), optional `transactions_entity` (auto-derived
   `_balance`→`_last_transaction`), `title`, `max_transactions`. Syntax-check with
   `node --check`. (Canonical copy lives inside the integration; no separate `www/`.)
+  Waits for `home-assistant` before declaring its class: HA's scoped-registry
+  polyfill replaces both `customElements` and `HTMLElement`; eager extra-module
+  registration can disappear on fast loads. Preserve the wait even with a
+  Lovelace resource, because the same module URL executes only once. Regression:
+  `node --experimental-vm-modules --test --test-isolation=none tests/frontend_card.test.mjs`.
 - `custom_components/pluxee/frontend.py` — auto-serves the card via
   `hass.http.async_register_static_paths([StaticPathConfig("/pluxee/pluxee-card.js", path,
   cache_headers=False)])` and loads it with `frontend.add_extra_js_url(hass, url+"?v=…")`,

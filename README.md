@@ -133,8 +133,10 @@ expands to its **latest transactions** when tapped.
 The integration serves the card (`custom_components/pluxee/frontend/pluxee-card.js`)
 and registers it as both a Lovelace resource and a frontend module automatically.
 Its URL changes whenever the bundled JavaScript changes, avoiding stale frontend
-caches. Once the integration is installed and a config entry is set up, the card
-appears under *Edit dashboard → + Add Card → "Pluxee Card"* without a manual
+caches. The card waits for Home Assistant's frontend initialization before
+registering, so a fast load cannot lose its registration when HA replaces the
+browser's custom-element registry. Once the integration is installed and a config
+entry is set up, the card appears under *Edit dashboard → + Add Card → "Pluxee Card"* without a manual
 resource or cache reset.
 
 Config (the picker adds `type: custom:pluxee-card`; set the entity in YAML):
